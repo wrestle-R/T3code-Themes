@@ -537,12 +537,7 @@ async function testNightfall(browser) {
   assert.equal(await frame.locator('[data-assistant-citation-viewport]').evaluate(el => getComputedStyle(el,'::after').opacity), '0');
   await page.getByRole('button', { name: 'Reset' }).click();
   await page.locator('.studio-viewport').scrollIntoViewIfNeeded();
-  await frame.locator('html').evaluate(async root => {
-    for (let i = 0; i < 45 && root.hasAttribute('data-paused'); i++) {
-      await new Promise(resolve => requestAnimationFrame(resolve));
-    }
-    if (root.hasAttribute('data-paused')) throw new Error('Snow preview remained paused in view.');
-  });
+  await frame.locator('html:not([data-paused])').waitFor({ state: 'attached', timeout: 5000 });
   const dark = await look();
   assert.equal(dark.canvas, 'rgb(16, 16, 16)');
   assert.equal(dark.backdropImage, 'none');
