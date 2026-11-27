@@ -146,6 +146,6 @@ h1 { margin: 0 0 12px; font-size: 15px; font-weight: 600; letter-spacing: -.02em
   .preview-rail { padding-inline: 7px; }
   .preview-rail :is(.sample-threads, [data-sidebar-row], .preview-app strong) { display: none; }
   .preview-shell :is(.new-thread, .preview-messages) { width: calc(100% - 25px); }
-  .preview-shell .composer { padding: 9px; }
+  .preview-shell .composer { min-height: 80px; padding: 9px; }
   .preview-shell .composer-tools { gap: 5px; }
 }

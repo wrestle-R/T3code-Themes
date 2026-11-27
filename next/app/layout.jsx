@@ -1,6 +1,9 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteNavigation } from './components/site-controls';
+import { PreviewStylesProvider } from './components/preview-styles';
 import './globals.css';
 
 export const metadata = {
@@ -16,7 +19,8 @@ export const viewport = {
   ],
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const previewCss = await readFile(join(process.cwd(), 'app', 'preview-frame.css'), 'utf8');
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -28,7 +32,7 @@ export default function RootLayout({ children }) {
           </Link>
           <SiteNavigation />
         </header>
-        {children}
+        <PreviewStylesProvider css={previewCss}>{children}</PreviewStylesProvider>
         <footer className="site-footer wrap">
           <p>Made by Russel</p>
           <a className="text-link" href="https://github.com/wrestle-R/T3code-Themes">Source on GitHub <span aria-hidden="true">↗</span></a>

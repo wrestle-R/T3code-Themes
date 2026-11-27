@@ -29,12 +29,12 @@ export function AppearanceControl({ label, appearance, onChange, disabled, compa
   );
 }
 
-export function DownloadAction({ href, disabled }) {
+export function DownloadAction({ href, disabled, form }) {
   const content = <><Download size={16} aria-hidden="true" /> Download JSON</>;
   return href ? (
     <a className="download" href={href} download>{content}</a>
   ) : (
-    <button className="download" type="submit" disabled={disabled}>{content}</button>
+    <button className="download" type="submit" form={form} disabled={disabled}>{content}</button>
   );
 }
 

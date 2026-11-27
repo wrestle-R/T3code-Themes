@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const config = {
   agentRules: false,
-  outputFileTracingIncludes: { '/*': ['./community/**/*', './public/downloads/*.json'] },
+  outputFileTracingIncludes: { '/*': ['./app/preview-frame.css', './community/**/*', './public/downloads/*.json'] },
   devIndicators: false,
   async redirects() {
     return [

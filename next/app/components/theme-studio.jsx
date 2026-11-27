@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowDown, ArrowLeft, RotateCcw, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ChevronRight, Maximize2, PanelLeft, RotateCcw, Search, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { minecraftMobs, pondProviders, themes } from '../themes';
 import { ThemePreview, useTheme } from './theme-preview';
 import { DownloadAction, RangeField, SwitchField } from './ui';
+import { previewColors } from '../lib/preview-colors';
 import { validateTheme } from '../lib/theme-format.mjs';
 import '../studio.css';
 
@@ -90,11 +91,16 @@ const paletteFields = {
   surfaceRaised: 'Composer background', messageSurface: 'Message background', messageForeground: 'Message text',
   accent: 'Accent', accentForeground: 'Accent text', border: 'Borders',
 };
-const previewFallbacks = {
-  light: { canvas: '#e5e5e5', text: '#222222', textMuted: '#555555', sidebar: '#ececec', surfaceRaised: '#fcfcfc', border: '#d4d4d4' },
-  dark: { canvas: '#101010', text: '#fafafa', textMuted: '#aaaaaa', sidebar: '#1b1b1b', surfaceRaised: '#202020', border: '#383838' },
+const paletteGroups = {
+  Workspace: ['canvas', 'text', 'textMuted', 'border'],
+  Sidebar: ['sidebar', 'sidebarForeground', 'sidebarMutedForeground', 'sidebarRowSelected'],
+  'Chat and composer': ['surfaceRaised', 'messageSurface', 'messageForeground'],
+  Toolbar: ['toolbar', 'toolbarForeground'],
+  Accent: ['accent', 'accentForeground'],
 };
+
 const surfaceRules = {
+  canvas: ['[data-chat-canvas]', 'background-color'],
   sidebar: ['[data-slot="sidebar"]', 'background-color'],
   sidebarForeground: ['[data-slot="sidebar"]', 'color'],
   sidebarRowSelected: ['[data-sidebar-row][aria-current="page"]', 'background-color'],
@@ -221,7 +227,8 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
   const hasAgents = isPond || slug === 'nightfall-christmas' || slug === 'minecraft-retro';
   const defaultParent = theme.previewProvider || 'OpenAI';
   const { config, error } = useTheme(theme.download, initialConfig);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(true);
+  const [colorSearch, setColorSearch] = useState('');
   const [imported, setImported] = useState(null);
   const [importStatus, setImportStatus] = useState('');
   const [palette, setPalette] = useState({ light: {}, dark: {} });
@@ -238,11 +245,17 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
   const motionChanged = Object.entries(values).some(([key, value]) => theme.defaults[key] !== value);
   const sameTheme = !imported || imported.id === config?.id;
   const configured = base && applyPalette(sameTheme && motionChanged ? configureTheme(base, values, slug) : base, palette);
-  const colors = {
-    ...previewFallbacks[appearance], canvas: configured?.canvas, accent: configured?.accent,
-    ...configured?.colors, ...configured?.variants?.[appearance],
-  };
+  const colors = previewColors(configured, appearance);
   const extraTokens = Object.keys(colors).filter(token => !Object.hasOwn(paletteFields, token)).sort();
+  const search = colorSearch.toLowerCase().trim();
+  const labelToken = token => paletteFields[token] || token.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, char => char.toUpperCase());
+  const visibleGroups = Object.entries({ ...paletteGroups, 'Advanced colors': extraTokens })
+    .map(([group, tokens]) => [group, tokens.filter(token =>
+      (token !== 'canvas' || !hasBackgrounds || !sameTheme) &&
+      (!search || (group + ' ' + labelToken(token)).toLowerCase().includes(search)))])
+    .filter(([, tokens]) => tokens.length > 0);
+  const hasEffects = sameTheme && (hasBackgrounds || theme.motionLabel || hasAgents);
+  const showBackgrounds = hasBackgrounds && sameTheme && (!search || ['background', 'light base', 'dark base'].some(label => label.includes(search)));
   const invalid = Object.values(drafts).some(draft => draft != null && !/^#?[\da-f]{6}$/i.test(draft));
   const canReset = imported || Object.keys(palette.dark).length || Object.keys(palette.light).length || invalid || values.still || agents.length > 0 || parent !== defaultParent
     || activity !== 'Idle' || reasoning !== 'Low'
@@ -332,6 +345,7 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
     setImported(null);
     setPalette({ light: {}, dark: {} });
     setImportStatus('');
+    setColorSearch('');
     setAppearance(theme.appearance || 'dark');
   }
 
@@ -363,123 +377,128 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
         <div className="studio-header-actions">
           <input type="file" accept=".json,application/json" ref={fileInput} onChange={importTheme} aria-label="Import theme file" hidden />
           <button type="button" className="open-theme" onClick={() => fileInput.current.click()}><Upload size={15} aria-hidden="true" /> Import JSON</button>
-          <button type="button" className="open-theme studio-customize-toggle" aria-pressed={editing} aria-controls="customize" onClick={() => setEditing(current => !current)}>{editing ? 'Full preview' : 'Customize'}</button>
-          <a className="text-link studio-customize-link" href="#customize">Customize</a>
-          <a className="text-link install-link" href="#install">Install <ArrowDown size={16} aria-hidden="true" /></a>
+          <button type="button" className="open-theme" aria-expanded={editing} aria-controls="customize" onClick={() => setEditing(current => !current)}>
+            {editing ? <Maximize2 size={15} aria-hidden="true" /> : <PanelLeft size={15} aria-hidden="true" />}
+            {editing ? 'Full preview' : 'Customize'}
+          </button>
+          <a className="text-link install-link" href="#install">Install <ArrowDown size={15} aria-hidden="true" /></a>
+          {base && <DownloadAction form="theme-settings" disabled={invalid} />}
         </div>
       </header>
 
       {importStatus && <p className="import-status" role="status">{importStatus}</p>}
       <div className="studio-workspace" data-editing={editing || undefined}>
-      <section className="studio-stage" aria-label={theme.name + ' preview'}>
+        <section className="studio-stage" aria-label={theme.name + ' preview'}>
           <ThemePreview slug={slug} theme={theme} config={configured} error={error && !imported} appearance={appearance} onAppearanceChange={setAppearance} studio parent={parent} agents={agents} activity={activity} mob={values.mob}
             reasoning={isMinecraft ? reasoning : undefined}
             onMobChange={isMinecraft && sameTheme ? mob => updateValue('mob', mob) : undefined} />
-      </section>
+        </section>
 
-      <div className="studio-layout">
-        <div className="studio-sidebar">
+        <aside className="studio-sidebar" aria-label="Theme controls" hidden={!editing}>
           <section className="studio-settings" id="customize" aria-labelledby="settings-title">
-            <h2 id="settings-title">Customize</h2>
+            <header className="editor-heading">
+              <h2 id="settings-title">Colors</h2>
+              {hasEffects && <a className="editor-effects-link" href={hasBackgrounds || theme.motionLabel ? '#preview-effects' : '#school-title'}>Effects <ArrowDown size={13} aria-hidden="true" /></a>}
+            </header>
             {error && !imported ? (
               <p className="studio-fallback">Customization is unavailable. <a className="open-theme" href={theme.download} download>Download original theme</a></p>
             ) : (
               <form id="theme-settings" onSubmit={download} onReset={reset}>
                 <fieldset className="settings-controls" disabled={!configured}>
-                  <fieldset className="palette-fields">
-                    <legend>{appearance === 'dark' ? 'Dark palette' : 'Light palette'}</legend>
-                    {Object.entries(paletteFields).filter(([token]) => token !== 'canvas' || !hasBackgrounds || !sameTheme)
-                      .map(([token, label]) => renderPaletteField(token, label))}
-                    {extraTokens.length > 0 && <details><summary>More color tokens</summary>
-                      {extraTokens.map(token => renderPaletteField(token, token.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, char => char.toUpperCase())))}
+                  <div className="palette-fields">
+                    <p className="editor-mode">{appearance === 'dark' ? 'Dark palette' : 'Light palette'}</p>
+                    <label className="editor-search">
+                      <Search size={15} aria-hidden="true" />
+                      <input type="search" placeholder="Find a color" aria-label="Find a color" value={colorSearch} onChange={event => setColorSearch(event.target.value)} />
+                    </label>
+                    {showBackgrounds && <details className="palette-group" key={search + ':background'} open>
+                      <summary><ChevronRight size={14} aria-hidden="true" /> Background</summary>
+                      {backgrounds.map(([name, label]) => (
+                        <ColorField key={name} name={name} label={label} value={imported && !motionChanged ? swatchValue(imported.variants?.[name]?.canvas || (name === 'dark' && imported.canvas), values[name]) : values[name]} draft={drafts[name]} onSwatch={updateSwatch} onHex={updateHex} onCommit={clearDraft} />
+                      ))}
                     </details>}
-                  </fieldset>
-                  {sameTheme && <div className="motion-fields">
-                  {isMinecraft && <>
-                    <label className="parent-control mob-activity">Main thread model
-                      <select value={parent} onChange={event => setParent(event.target.value)}>
-                        <optgroup label="Fast · Iron pickaxe">
-                          <option value="Claude|Haiku 4.5">Claude Haiku 4.5</option>
-                          <option value="Gemini|Flash">Gemini Flash</option>
-                        </optgroup>
-                        <optgroup label="Balanced · Diamond sword">
-                          <option value="Claude|Sonnet 4.6">Claude Sonnet 4.6</option>
-                          <option value="OpenAI|GPT-5">OpenAI GPT-5</option>
-                          <option value="OpenCode">OpenCode</option>
-                        </optgroup>
-                        <optgroup label="Flagship · Netherite sword">
-                          <option value="Claude">Claude Opus</option>
-                          <option value="Gemini">Gemini Pro</option>
-                          <option value="OpenAI">OpenAI 6.1 Sol</option>
-                          <option value="OpenAI|6.2 Sol Medium">OpenAI 6.2 Sol Medium</option>
-                        </optgroup>
-                      </select>
-                    </label>
-                    <label className="parent-control mob-activity">Reasoning level
-                      <select value={reasoning} onChange={event => setReasoning(event.target.value)}>
-                        {['Low', 'Medium', 'High'].map(level => <option key={level}>{level}</option>)}
-                      </select>
-                    </label>
-                    <label className="parent-control mob-activity">Preview activity
-                      <select value={activity} onChange={event => setActivity(event.target.value)}>
-                        {['Idle', 'Reasoning', 'Coding', 'Approval', 'Error', 'Background'].map(state => <option key={state}>{state}</option>)}
-                      </select>
-                    </label>
-                  </>}
-                  {hasBackgrounds && slug !== 'nightfall-christmas' && <fieldset>
-                    <legend>Background</legend>
-                    {backgrounds.map(([name, label]) => (
-                      <ColorField key={name} name={name} label={label} value={imported && !motionChanged ? swatchValue(imported.variants?.[name]?.canvas || (name === 'dark' && imported.canvas), values[name]) : values[name]} draft={drafts[name]} onSwatch={updateSwatch} onHex={updateHex} onCommit={clearDraft} />
+                    {visibleGroups.map(([group, tokens]) => (
+                      <details className="palette-group" key={search + ':' + group} open={Boolean(search) || group === 'Workspace' || group === 'Sidebar'}>
+                        <summary><ChevronRight size={14} aria-hidden="true" /> {group}</summary>
+                        {tokens.map(token => renderPaletteField(token, labelToken(token)))}
+                      </details>
                     ))}
+                    {!showBackgrounds && visibleGroups.length === 0 && <p className="settings-hint">No colors match this search.</p>}
+                  </div>
+                  {sameTheme && (hasBackgrounds || theme.motionLabel) && <div className="motion-fields">
+                    <h3 id="preview-effects">Theme effects</h3>
+                    {isMinecraft && <>
+                      <label className="parent-control mob-activity">Main thread model
+                        <select value={parent} onChange={event => setParent(event.target.value)}>
+                          <optgroup label="Fast · Iron pickaxe">
+                            <option value="Claude|Haiku 4.5">Claude Haiku 4.5</option>
+                            <option value="Gemini|Flash">Gemini Flash</option>
+                          </optgroup>
+                          <optgroup label="Balanced · Diamond sword">
+                            <option value="Claude|Sonnet 4.6">Claude Sonnet 4.6</option>
+                            <option value="OpenAI|GPT-5">OpenAI GPT-5</option>
+                            <option value="OpenCode">OpenCode</option>
+                          </optgroup>
+                          <optgroup label="Flagship · Netherite sword">
+                            <option value="Claude">Claude Opus</option>
+                            <option value="Gemini">Gemini Pro</option>
+                            <option value="OpenAI">OpenAI 6.1 Sol</option>
+                            <option value="OpenAI|6.2 Sol Medium">OpenAI 6.2 Sol Medium</option>
+                          </optgroup>
+                        </select>
+                      </label>
+                      <label className="parent-control mob-activity">Reasoning level
+                        <select value={reasoning} onChange={event => setReasoning(event.target.value)}>
+                          {['Low', 'Medium', 'High'].map(level => <option key={level}>{level}</option>)}
+                        </select>
+                      </label>
+                      <label className="parent-control mob-activity">Preview activity
+                        <select value={activity} onChange={event => setActivity(event.target.value)}>
+                          {['Idle', 'Reasoning', 'Coding', 'Approval', 'Error', 'Background'].map(state => <option key={state}>{state}</option>)}
+                        </select>
+                      </label>
+                    </>}
                     {slug === 'dark-texture' && (
-                      <RangeField name="grain-strength" label="Grain strength" value={values['grain-strength']} onChange={updateValue} disabled={!configured} />
+                      <RangeField name="grain-strength" label="Grain strength" value={values['grain-strength']} onChange={updateValue} />
                     )}
-                  </fieldset>}
-                  {slug === 'nightfall-christmas' && <>
-                    <fieldset><legend>Background</legend>
-                      {backgrounds.map(([name,label]) => <ColorField key={name} name={name} label={label} value={imported && !motionChanged ? swatchValue(imported.variants?.[name]?.canvas || (name === 'dark' && imported.canvas), values[name]) : values[name]} draft={drafts[name]} onSwatch={updateSwatch} onHex={updateHex} onCommit={clearDraft} />)}
-                    </fieldset>
-                    <fieldset><legend>Snowfall</legend>
-                      <RangeField name="snow-intensity" label="Snowfall intensity" value={values['snow-intensity']} onChange={updateValue} />
-                      <RangeField name="snow-speed" label="Snowfall speed" min={0} max={70} value={values['snow-speed']} onChange={updateValue} />
-                      <SwitchField label="Snow on the chat box" checked={values.accumulation} onChange={v => updateValue('accumulation',v)} />
-                    </fieldset>
-                    <fieldset><legend>Decorations</legend>
-                      <RangeField name="light-brightness" label="Light glow" value={values['light-brightness']} onChange={updateValue} />
-                      <SwitchField label="Show snowmen" checked={values.snowmen} onChange={v => updateValue('snowmen',v)} />
-                    </fieldset>
-                  </>}
-                  {theme.motionLabel && (
-                    <SwitchField label={theme.motionLabel} checked={Boolean(values.still)} onChange={checked => updateValue('still', checked)} disabled={!configured} />
-                  )}
-                  {isPond && (
-                    <fieldset>
-                      <legend>Fish movement</legend>
-                      <p className="settings-hint">Longer laps slow the fish down.</p>
-                      {pondProviders.map(provider => {
-                        const name = provider.toLowerCase() + '-time';
-                        const label = <><ProviderDot provider={provider} /> {provider} lap time</>;
-                        return <RangeField key={name} name={name} label={label} min={10} max={120} unit=" s" value={values[name]} onChange={updateValue} disabled={!configured || Boolean(values.still)} />;
-                      })}
-                      <SwitchField label="Keep fish still" checked={Boolean(values.still)} onChange={checked => updateValue('still', checked)} disabled={!configured} />
-                    </fieldset>
-                  )}
+                    {slug === 'nightfall-christmas' && <>
+                      <fieldset><legend>Snowfall</legend>
+                        <RangeField name="snow-intensity" label="Snowfall intensity" value={values['snow-intensity']} onChange={updateValue} />
+                        <RangeField name="snow-speed" label="Snowfall speed" min={0} max={70} value={values['snow-speed']} onChange={updateValue} />
+                        <SwitchField label="Snow on the chat box" checked={values.accumulation} onChange={v => updateValue('accumulation',v)} />
+                      </fieldset>
+                      <fieldset><legend>Decorations</legend>
+                        <RangeField name="light-brightness" label="Light glow" value={values['light-brightness']} onChange={updateValue} />
+                        <SwitchField label="Show snowmen" checked={values.snowmen} onChange={v => updateValue('snowmen',v)} />
+                      </fieldset>
+                    </>}
+                    {theme.motionLabel && (
+                      <SwitchField label={theme.motionLabel} checked={Boolean(values.still)} onChange={checked => updateValue('still', checked)} disabled={!configured} />
+                    )}
+                    {isPond && (
+                      <fieldset>
+                        <legend>Fish movement</legend>
+                        <p className="settings-hint">Longer laps slow the fish down.</p>
+                        {pondProviders.map(provider => {
+                          const name = provider.toLowerCase() + '-time';
+                          const label = <><ProviderDot provider={provider} /> {provider} lap time</>;
+                          return <RangeField key={name} name={name} label={label} min={10} max={120} unit=" s" value={values[name]} onChange={updateValue} disabled={!configured || Boolean(values.still)} />;
+                        })}
+                        <SwitchField label="Keep fish still" checked={Boolean(values.still)} onChange={checked => updateValue('still', checked)} disabled={!configured} />
+                      </fieldset>
+                    )}
                   </div>}
                   <div className="studio-actions">
                     <button className="open-theme" type="reset" disabled={!canReset}><RotateCcw size={15} aria-hidden="true" /> Reset</button>
-                    <DownloadAction disabled={invalid} />
                   </div>
                 </fieldset>
               </form>
             )}
           </section>
-        </div>
-        <div>
           {hasAgents && <SubagentTest parent={parent} setParent={setParent} agents={agents} running={running} spawn={spawn} finish={finish} disabled={!configured} />}
-          <InstallInstructions name={imported?.name || theme.name} />
-        </div>
+        </aside>
       </div>
-      </div>
+      <InstallInstructions name={imported?.name || theme.name} />
     </main>
   );
 }

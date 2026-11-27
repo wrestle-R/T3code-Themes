@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { ArrowUp, FolderGit2, GitBranch, PanelLeft, Paperclip, Square } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { previewColors } from '../lib/preview-colors';
 import { minecraftMobs, themes } from '../themes';
 import { AppearanceControl } from './ui';
+import { PreviewStyles } from './preview-styles';
 
 const colorTokens = {
   canvas: 'canvas',
@@ -30,8 +32,8 @@ const colorTokens = {
 const models = { OpenAI: '6.1 Sol High', Claude: 'Opus 5.5 High', Gemini: 'Gemini Pro', OpenCode: 'OpenCode' };
 const icons = { Claude: 'text-[#d97757]', Gemini: 'text-[#5b87bf]' };
 const emptyAgents = [];
-const policy = "default-src 'none'; style-src 'self' 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'";
-const frameSource = '<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="' + policy + '"><title>Theme preview</title><link rel="stylesheet" href="/preview.css"></head><body id="preview-root"></body></html>';
+const policy = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'";
+const frameSource = '<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="' + policy + '"><title>Theme preview</title></head><body id="preview-root"></body></html>';
 
 function colorDeclarations(colors) {
   return Object.entries(colorTokens)
@@ -165,11 +167,12 @@ function PreviewConversation({ slug, parent, agents, conversation, activity, rea
 }
 
 export function ThemePreview({ slug, theme = themes[slug], config, error, appearance, onAppearanceChange, studio = false, parent = 'OpenAI', agents = emptyAgents, activity = 'Idle', reasoning, mob, onMobChange }) {
+  const previewCss = useContext(PreviewStyles);
   const [frame, setFrame] = useState(null);
   const [conversation, setConversation] = useState(false);
   const preview = useRef(null);
   const iframe = useRef(null);
-  const ready = Boolean(config && frame);
+  const ready = Boolean(previewCss && config && frame);
 
   function attachLoadedFrame() {
     const next = iframe.current?.contentDocument;
@@ -225,11 +228,14 @@ export function ThemePreview({ slug, theme = themes[slug], config, error, appear
         <noscript><p className="preview-status">Enable JavaScript to use the live preview.</p></noscript>
       </div>
       {ready && createPortal(
-        <style>{`
-          :root:not(.dark) { ${colorDeclarations({ canvas: config.canvas, accent: config.accent, ...config.colors, ...config.variants?.light })} }
-          :root.dark { ${colorDeclarations({ canvas: config.canvas, accent: config.accent, ...config.colors, ...config.variants?.dark })} }
-          ${config.css}
-        `}</style>,
+        <>
+          <style>{previewCss}</style>
+          <style>{`
+            :root:not(.dark) { ${colorDeclarations(previewColors(config, 'light'))} }
+            :root.dark { ${colorDeclarations(previewColors(config, 'dark'))} }
+            ${config.css}
+          `}</style>
+        </>,
         frame.head,
       )}
       {ready && createPortal(<PreviewConversation slug={slug} parent={parent} agents={agents} conversation={conversation}

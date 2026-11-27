@@ -1,13 +1,17 @@
 const assert = require('node:assert/strict');
 const { readFile } = require('node:fs/promises');
-const { chromium } = require('playwright');
+const { chromium, firefox } = require('playwright');
 const { site, waitForApp } = require('./test-server.cjs');
 
 async function main() {
   await waitForApp();
-  const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
+  const browser = process.env.THEME_TEST_BROWSER === 'firefox'
+    ? await firefox.launch()
+    : await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
   try {
     const page = await browser.newPage();
+    // Reproduce the production report where an iframe stylesheet failed to load.
+    await page.route('**/preview.css', route => route.abort());
     await page.goto(site);
     assert.equal(await page.getByRole('heading', { name: 'Margin Notes' }).count(), 0);
     const retro = page.getByRole('article', { name: 'Minecraft Retro', exact: true });
@@ -44,9 +48,11 @@ async function main() {
     await page.goto(new URL('/koi-pond', site).href);
     const frame = page.frameLocator('.studio-viewport iframe');
     await frame.getByRole('heading', { name: 'What should we build?' }).waitFor();
-    const fullWidth = (await page.locator('.studio-viewport').boundingBox()).width;
-    await page.getByRole('button', { name: 'Customize', exact: true }).click();
-    assert.ok((await page.locator('.studio-viewport').boundingBox()).width < fullWidth);
+    const editorWidth = (await page.locator('.studio-viewport').boundingBox()).width;
+    await page.getByRole('searchbox', { name: 'Find a color' }).fill('sidebar background');
+    await page.getByLabel('Sidebar background hex', { exact: true }).waitFor();
+    assert.equal(await page.getByLabel('Main text hex', { exact: true }).count(), 0);
+    await page.getByRole('searchbox', { name: 'Find a color' }).clear();
     await page.getByLabel('Preview conversation state').selectOption('conversation');
     await frame.getByText('Can we make the workspace easier to scan?').waitFor();
     await page.getByLabel('Sidebar background hex', { exact: true }).fill('#345678');
@@ -71,7 +77,9 @@ async function main() {
     assert.equal(await frame.getByRole('complementary', { name: 'Sample sidebar' }).evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(52, 86, 120)');
 
     await page.getByRole('button', { name: 'Full preview', exact: true }).click();
-    assert.equal((await page.locator('.studio-viewport').boundingBox()).width, fullWidth);
+    assert.ok((await page.locator('.studio-viewport').boundingBox()).width > editorWidth);
+    await page.getByRole('button', { name: 'Customize', exact: true }).click();
+    assert.equal((await page.locator('.studio-viewport').boundingBox()).width, editorWidth);
     await page.route('**/api/github-profile?login=test-user', route => route.fulfill({
       json: { name: 'Test Author', login: 'test-user', id: 123, website: 'https://example.org/' },
     }));
@@ -93,11 +101,30 @@ async function main() {
     assert.match(issue.searchParams.get('body'), /Test Author[\s\S]*Dark, Minimal/);
     assert.ok(await page.getByRole('link', { name: 'Open a pull request' }).isVisible());
 
+    const studios = ['/koi-pond', '/dark-texture', '/nightfall-christmas', '/minecraft', '/minecraft-retro'];
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      for (const path of ['/', '/koi-pond', '/submit']) {
+      for (const path of ['/', ...studios, '/submit']) {
         await page.goto(new URL(path, site).href);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), path + ' at ' + width + 'px');
+        if (path === '/') {
+          for (const iframe of await page.locator('.theme iframe').all()) {
+            const composer = iframe.contentFrame().locator('.preview-composer');
+            assert.equal(await composer.evaluate(el => getComputedStyle(el).display), 'grid');
+          }
+        }
+        if (!studios.includes(path)) continue;
+        const preview = page.frameLocator('.studio-viewport iframe');
+        await preview.getByRole('heading', { name: 'What should we build?' }).waitFor();
+        const shell = preview.locator('.preview-shell');
+        assert.equal(await shell.evaluate(el => getComputedStyle(el).display), 'grid', path);
+        assert.match(await shell.evaluate(el => getComputedStyle(el).fontFamily), /system-ui/);
+        await page.getByLabel('Preview conversation state').selectOption('conversation');
+        await preview.getByText('Can we make the workspace easier to scan?').waitFor();
+        await page.getByRole('radio', { name: 'Light', exact: true }).check();
+        await preview.locator('html:not(.dark)').waitFor({ state: 'attached' });
+        await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+        await preview.locator('html.dark').waitFor({ state: 'attached' });
       }
     }
     console.log('Community gallery, shared local counts, preview palettes, import/export, and submission checks passed.');
