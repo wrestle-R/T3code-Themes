@@ -1,5 +1,10 @@
-local-docs/
+/local-docs/
 .vercel/
 .next/
 node_modules/
 __pycache__/
+
+/next/local-docs/
+.env
+.env.*
+!.env.example

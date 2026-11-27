@@ -160,7 +160,7 @@ css+=f'''
 '''
 reference=json.loads((ROOT/'public/downloads/nightfall-christmas.json').read_text())
 dark=reference['colors'].copy();light=reference['variants']['light'].copy();light['canvas']='#e5e5e5'
-theme={'version':1,'id':'blockworks','name':'Minecraft','appearance':'dark','canvas':'#101010','accent':dark['accent'],'colors':dark,'variants':{'light':light},'css':css}
+theme={'version':1,'id':'blockworks','name':'Minecraft Retro','appearance':'dark','canvas':'#101010','accent':dark['accent'],'colors':dark,'variants':{'light':light},'css':css}
 assert len(css)<100000, len(css)
 (ROOT/'public/downloads/blockworks.json').write_text(json.dumps(theme,indent=2)+'\n')
 print(f'Minecraft CSS: {len(css):,} characters')

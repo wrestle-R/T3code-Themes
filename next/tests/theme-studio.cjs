@@ -2,7 +2,6 @@
 // Set CHROME_PATH to use an existing Chromium installation.
 const assert = require('node:assert/strict');
 const { readFile } = require('node:fs/promises');
-const { setTimeout: delay } = require('node:timers/promises');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const site = process.env.SITE_URL || 'http://localhost:3000';
 
@@ -39,7 +38,7 @@ async function grainContrast(page, pond) {
     canvas.width = canvas.height = 64;
     const bitmap = await createImageBitmap(await (await fetch(source)).blob());
     const context = canvas.getContext('2d');
-    context.drawImage(bitmap, 12, 12, 64, 64, 0, 0, 64, 64);
+    context.drawImage(bitmap, 12, 85, 64, 64, 0, 0, 64, 64);
     bitmap.close();
     const pixels = context.getImageData(0, 0, 64, 64).data;
     const samples = [...pixels].filter((_, index) => index % 4 === 0);
@@ -199,7 +198,7 @@ async function testStudio(browser) {
 
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
   }
 
   await page.getByRole('navigation').getByRole('link', { name: 'Collection' }).click();
@@ -334,153 +333,138 @@ async function testNativeComposerGemini(browser) {
   await page.close();
 }
 
-function readGolems(frame) {
-  return frame.locator('.demo').evaluate(pond => {
-    const canvas = pond.querySelector('[data-assistant-citation-viewport]');
-    return [[pond, '::before'], [pond, '::after'], [canvas, '::before'], [canvas, '::after']].flatMap(([host, pseudo]) => {
-      const style = getComputedStyle(host, pseudo);
-      return style.content === 'none' ? [] : [{
-        sprite: style.getPropertyValue('--mc-sprite').trim(),
-        transform: style.transform,
-        frame: style.backgroundPositionX,
-        motion: style.animationName,
-        playback: style.animationPlayState,
-        pointerEvents: style.pointerEvents,
-      }];
-    });
-  });
-}
-
 async function testBlockworks(browser) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(site);
-  const original = await (await page.request.get(new URL('/downloads/blockworks.json', site).href)).json();
-  await page.goto(new URL('/blockworks', site).href);
+  const original = await (await page.request.get(new URL('/downloads/minecraft.json', site).href)).json();
+  await page.goto(new URL('/minecraft', site).href);
   const model = page.getByLabel('Main thread model');
   const frame = page.frameLocator('.studio-viewport iframe');
   const pond = frame.locator('.demo');
-  assert.equal(original.canvas, '#101010');
-  assert.equal(original.variants.light.canvas, '#e5e5e5');
-  // One cropped portal on the right; no left terrain or full-width floor.
-  assert.equal(await pond.evaluate(el => getComputedStyle(el).backgroundRepeat), 'no-repeat');
-  assert.match(await pond.evaluate(el => getComputedStyle(el).backgroundPosition), /100%/);
+  assert.equal(original.canvas, '#121316');
+  assert.equal(original.variants.light.canvas, '#e8e9ec');
+  const dock = frame.locator('[data-chat-composer-main-surface]');
+  const look = () => dock.evaluate(el => {
+    const icon = getComputedStyle(el, '::after');
+    const aura = getComputedStyle(el, '::before');
+    return { sprite: icon.backgroundImage, animation: icon.animationName, motion: icon.animationPlayState,
+      position: icon.backgroundPositionX, anchor: icon.position, pointerEvents: icon.pointerEvents,
+      width: icon.width, sizing: icon.backgroundSize, badge: aura.content, aura: aura.animationName,
+      particles: aura.backgroundImage, lift: icon.getPropertyValue('--mc-lift').trim() };
+  });
   const sprites = {};
   for (const provider of ['Gemini', 'Claude', 'OpenCode', 'OpenAI']) {
     await model.selectOption(provider);
-    const [golem] = await readGolems(frame);
-    sprites[provider] = golem.sprite;
-    assert.match(golem.sprite, /^url\("data:image\/webp;base64,/);
-    assert.equal(golem.pointerEvents, 'none');
+    sprites[provider] = (await look()).sprite;
   }
   assert.equal(new Set(Object.values(sprites)).size, 4);
+  assert.equal(await pond.evaluate(el => getComputedStyle(el, '::before').content), 'none');
+  assert.equal((await look()).anchor, 'absolute');
+  assert.equal((await look()).width, '64px');
+  assert.equal((await look()).sizing, '400% 100%');
+  assert.match((await look()).sprite, /^url\("data:image\/png;base64,/);
+  assert.equal((await look()).pointerEvents, 'none');
+  assert.equal((await look()).animation, 'minecraft-idle');
 
-  await model.selectOption('OpenAI');
-  const ironSize = await pond.evaluate(el => parseFloat(getComputedStyle(el,'::before').width));
-  assert.ok(await pond.evaluate(el => parseFloat(getComputedStyle(el,'::before').animationDuration) >= 60), 'Iron golem should move slowly');
-  await model.selectOption('OpenCode');
-  assert.ok(await pond.evaluate(el => parseFloat(getComputedStyle(el,'::before').width)) > ironSize);
-  assert.notEqual(await pond.evaluate(el => getComputedStyle(el,'::before').filter), 'none');
-  await model.selectOption('Gemini');
-  for (const width of [320, 768, 1440]) {
-    await page.setViewportSize({width,height:950});
-    const flight = await pond.evaluate(el => {
-      getComputedStyle(el,'::before').animationName;
-      const animation = el.getAnimations({subtree:true}).find(a => a.animationName === 't3-minecraft-fly');
-      animation.pause();
-      const duration = animation.effect.getTiming().duration;
-      const composer = el.ownerDocument.querySelector('[data-chat-composer-main-surface]').getBoundingClientRect();
-      const origin = el.getBoundingClientRect();
-      const ys = []; let collisions=0;
-      for(let step=0;step<120;step++) {
-        animation.currentTime=duration*step/120;
-        const style=getComputedStyle(el,'::before');
-        const matrix=new DOMMatrixReadOnly(style.transform);
-        const size=parseFloat(style.width),left=origin.left+matrix.m41,top=origin.top+matrix.m42;
-        ys.push(matrix.m42);
-        if(left<composer.right && left+size>composer.left && top<composer.bottom && top+size>composer.top)collisions++;
+  const buddy = frame.getByRole('combobox', { name: 'Mob buddy' });
+  await buddy.focus();
+  await buddy.press('ArrowDown');
+  assert.equal(await buddy.inputValue(), 'openai');
+  await buddy.selectOption('claude');
+  assert.equal((await look()).sprite === sprites.Claude, true);
+  const savedMob = await exportedTheme(page);
+  assert.match(savedMob.css, /--mc-picked-buddy: var\(--mc-claude\)/);
+  for (const mob of ['creeper', 'fox']) {
+    await buddy.selectOption(mob);
+    assert.ok(!Object.values(sprites).includes((await look()).sprite));
+  }
+  await buddy.selectOption('claude');
+
+  const activity = page.getByLabel('Preview activity');
+  await activity.selectOption('Reasoning');
+  assert.equal((await look()).animation, 'minecraft-thinking');
+  assert.equal((await look()).position, '66.6667%');
+  await activity.selectOption('Coding');
+  assert.equal((await look()).animation, 'minecraft-working');
+  assert.equal((await look()).position, '100%');
+  const rail = frame.locator('.preview-rail');
+  const studioCard = rail.locator('[aria-current="page"]');
+  await rail.waitFor();
+  assert.equal(await rail.evaluate(el => getComputedStyle(el).backdropFilter), 'blur(16px) saturate(1.25)');
+  assert.equal(await studioCard.evaluate(el => getComputedStyle(el).animationName), 'minecraft-enchantment');
+  const gear = async (modelName, expected) => {
+    await model.selectOption(modelName);
+    assert.equal(await dock.evaluate((el, property) =>
+      getComputedStyle(el, '::after').backgroundImage ===
+      getComputedStyle(el.ownerDocument.documentElement).getPropertyValue(property).trim(), expected), true);
+  };
+  const effort = page.getByLabel('Reasoning level');
+  for (const state of ['Coding', 'Reasoning']) {
+    await activity.selectOption(state);
+    for (const [level, animation, lift] of [
+      ['Low', 'none', '0px'], ['Medium', 'minecraft-glints', '0px'], ['High', 'minecraft-max-glints', '-4px'],
+    ]) {
+      await effort.selectOption(level);
+      for (const [modelName, sprite] of [
+        ['Claude|Haiku 4.5', '--mc-claude-fast'],
+        ['Claude|Sonnet 4.6', '--mc-claude'],
+        ['OpenAI|6.2 Sol Medium', '--mc-claude-heavy'],
+      ]) {
+        await gear(modelName, sprite);
+        const visual = await look();
+        assert.equal(visual.aura, animation, `${state} ${modelName} at ${level}`);
+        assert.equal(visual.lift, lift);
+        if (level === 'Low') assert.equal(visual.particles, 'none, none');
+        else assert.match(visual.particles, /linear-gradient/);
       }
-      animation.currentTime=0; animation.play();
-      return {range:Math.max(...ys)-Math.min(...ys),height:origin.height,collisions};
-    });
-    assert.ok(flight.range>flight.height*.45, 'Allay should rise and dive');
-    assert.equal(flight.collisions,0,'Allay flight should avoid the composer');
+    }
   }
-  await page.setViewportSize({width:1440,height:950});
-  // Refresh restores CSS animations after the deterministic flight sampling.
-  await page.reload();
-  await frame.locator('.composer').waitFor();
-  await model.selectOption('Gemini');
-  const add = provider => page.getByRole('button', { name: 'Add ' + provider + ' subagent' });
-  const finish = provider => page.getByRole('button', { name: 'Finish ' + provider + ' subagent' });
-  for (const provider of ['Claude', 'OpenCode', 'OpenAI']) await add(provider).click();
-  assert.ok(await add('Gemini').isDisabled());
-  const expected = ['Gemini', 'Claude', 'OpenCode', 'OpenAI'].map(provider => sprites[provider]);
-  assert.deepEqual((await readGolems(frame)).map(golem => golem.sprite), expected);
-
-  const dark = await pond.evaluate(el => getComputedStyle(el).backgroundColor);
-  await page.getByRole('radio', { name: 'Light', exact: true }).check();
-  const light = await pond.evaluate(el => getComputedStyle(el).backgroundColor);
-  assert.notEqual(light, dark);
-  assert.deepEqual((await readGolems(frame)).map(golem => golem.sprite), expected);
-
-  // The real studio can demonstrate both routing policies without changing the export.
-  const scene = page.getByLabel('Preview conversation state');
-  await scene.selectOption('conversation');
-  assert.ok(await frame.getByLabel('Sample conversation').isVisible());
-  for (const width of [320, 768, 1440]) {
-    await page.setViewportSize({width, height:950});
-    const sceneBounds = await pond.evaluate(el => {
-      const messageBottom = Math.max(...[...el.querySelectorAll('[data-timeline-row-kind]')].map(row => row.getBoundingClientRect().bottom));
-      const composer = el.ownerDocument.querySelector('[data-chat-composer-main-surface]').getBoundingClientRect();
-      return {messageBottom,composerTop:composer.top};
-    });
-    assert.ok(sceneBounds.messageBottom < sceneBounds.composerTop, 'Conversation preview must fit above the composer');
+  assert.deepEqual(await exportedTheme(page), savedMob);
+  await buddy.selectOption('auto');
+  await gear('Gemini|Flash', '--mc-gemini-fast');
+  await gear('Gemini', '--mc-gemini-heavy');
+  await buddy.selectOption('claude');
+  for (const [state, badge] of [['Approval', '!'], ['Error', '\u00d7'], ['Background', 'z']]) {
+    await activity.selectOption(state);
+    assert.equal((await look()).badge, JSON.stringify(badge));
   }
-  await scene.selectOption('new');
-  assert.equal(await frame.getByLabel('Sample conversation').count(), 0);
-  await page.setViewportSize({width:1440,height:950});
-
-  const still = page.getByRole('switch', { name: 'Keep characters still' });
+  await activity.selectOption('Coding');
+  const still = page.getByRole('switch', { name: 'Keep the buddy still' });
   await still.click();
-  assert.ok((await readGolems(frame)).every(golem => golem.playback.split(', ').every(state => state === 'paused')));
-  const paused = await exportedTheme(page);
-  assert.match(paused.css, /--theme-motion-state: paused/);
+  assert.equal((await look()).motion, 'paused');
   await still.click();
-  const [initial] = await readGolems(frame);
-  const deadline = Date.now() + 2500;
-  let changedFrame = false;
-  let changedPosition = false;
-  while ((!changedFrame || !changedPosition) && Date.now() < deadline) {
-    await delay(80);
-    const [next] = await readGolems(frame);
-    changedFrame ||= next.frame !== initial.frame;
-    changedPosition ||= next.transform !== initial.transform;
-  }
-  assert.ok(changedFrame && changedPosition, 'The golem should move and change walking frames');
-
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  assert.ok((await readGolems(frame)).every(golem => golem.motion === 'none'));
-  await finish('OpenCode').click();
-  assert.deepEqual((await readGolems(frame)).map(golem => golem.sprite), [sprites.Gemini, sprites.Claude, sprites.OpenAI]);
-  await add('Gemini').click();
-  assert.deepEqual((await readGolems(frame)).map(golem => golem.sprite), [sprites.Gemini, sprites.Claude, sprites.Gemini, sprites.OpenAI]);
+  assert.equal((await look()).animation, 'none');
+  assert.equal((await look()).aura, 'none');
+  assert.equal(await studioCard.evaluate(el => getComputedStyle(el).animationName), 'none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
-  const group = frame.locator('[data-subagent-group] > button');
-  await group.evaluate(button => button.setAttribute('aria-expanded', 'false'));
-  assert.equal((await readGolems(frame)).length, 4);
-  await finish('Claude').click();
-  assert.equal((await readGolems(frame)).length, 3);
-  await page.getByRole('button', { name: 'Reset' }).click();
-  assert.equal((await readGolems(frame)).length, 1);
-  assert.deepEqual(await exportedTheme(page), original);
+  await page.getByRole('radio', { name: 'Light', exact: true }).check();
+  assert.equal(await dock.evaluate(el => getComputedStyle(el, '::after').backgroundImage ===
+    getComputedStyle(el.ownerDocument.documentElement).getPropertyValue('--mc-claude-heavy').trim()), true);
 
+  await page.getByLabel('Preview conversation state').selectOption('conversation');
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    assert.ok(await frame.locator('.composer').isVisible());
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
+    assert.ok(await page.locator('.preview-toolbar').evaluate(el => el.scrollWidth <= el.clientWidth));
+    const clearance = await dock.evaluate(el => {
+      const icon = getComputedStyle(el, '::after');
+      const aura = getComputedStyle(el, '::before');
+      const decorationHeight = Math.max(parseFloat(icon.height), parseFloat(aura.height));
+      const top = el.getBoundingClientRect().top - decorationHeight;
+      const timeline = el.ownerDocument.querySelector('.preview-messages');
+      return top - timeline.getBoundingClientRect().bottom;
+    });
+    assert.ok(clearance > 0, `The buddy and its effects should clear the conversation at ${width}px, got ${clearance}px`);
   }
+  await page.getByRole('button', { name: 'Reset' }).click();
+  assert.equal(await buddy.inputValue(), 'auto');
+  assert.equal(await activity.inputValue(), 'Idle');
+  assert.equal(await effort.inputValue(), 'Low');
+  assert.deepEqual(await exportedTheme(page), original);
   assert.deepEqual(errors, []);
   await page.close();
 }
@@ -490,14 +474,13 @@ async function testNightfall(browser) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(site);
-  assert.deepEqual(await page.getByRole('article').locator('h2').allTextContents(), ['Koi pond', 'Nightfall', 'Minecraft', 'Margin Notes', 'Dark texture']);
   const gallery = page.getByRole('article', { name: 'Nightfall' });
   const originalResponse = await page.request.get(new URL('/downloads/nightfall-christmas.json', site).href);
   assert.ok(originalResponse.ok());
   const original = await originalResponse.json();
   assert.equal(original.id, 'nightfall-christmas');
   assert.ok(original.css.length < 100000);
-  await gallery.getByRole('link', { name: 'Try Nightfall' }).click();
+  await gallery.getByRole('link', { name: 'Nightfall', exact: true }).click();
   await page.waitForURL('**/nightfall-christmas');
   const frame = page.frameLocator('.studio-viewport iframe');
   const pond = frame.locator('.demo');
@@ -554,6 +537,8 @@ async function testNightfall(browser) {
   await page.getByRole('switch', {name:'Show snowmen'}).click();
   assert.equal(await frame.locator('[data-assistant-citation-viewport]').evaluate(el => getComputedStyle(el,'::after').opacity), '0');
   await page.getByRole('button', { name: 'Reset' }).click();
+  await page.locator('.studio-viewport').scrollIntoViewIfNeeded();
+  await frame.locator('html:not([data-paused])').waitFor({ state: 'attached', timeout: 5000 });
   const dark = await look();
   assert.equal(dark.canvas, 'rgb(16, 16, 16)');
   assert.equal(dark.backdropImage, 'none');
@@ -584,7 +569,7 @@ async function testNightfall(browser) {
   assert.equal((await look()).snowAnimation, 'none');
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
   }
   assert.deepEqual(errors, []);
   await page.close();
@@ -595,10 +580,10 @@ async function testNightfall(browser) {
   try {
     const defaultsPage = await browser.newPage();
   await defaultsPage.goto(site);
-  for (const name of ['Koi pond', 'Nightfall', 'Minecraft', 'Margin Notes', 'Dark texture']) {
-    const card = defaultsPage.getByRole('article', {name});
+  for (const name of ['Koi pond', 'Nightfall', 'Minecraft', 'Minecraft Retro', 'Dark texture']) {
+    const card = defaultsPage.getByRole('article', {name, exact: true});
     const frame = card.frameLocator('iframe');
-    const expectedMode = ['Koi pond', 'Minecraft', 'Dark texture'].includes(name) ? 'dark' : 'light';
+    const expectedMode = ['Nightfall', 'Minecraft Retro'].includes(name) ? 'light' : 'dark';
     assert.equal(await card.locator('.preview').getAttribute('data-preview-appearance'), expectedMode);
     const picker = frame.locator('[data-chat-provider-model-picker]');
     await picker.waitFor();

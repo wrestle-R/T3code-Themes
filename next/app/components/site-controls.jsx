@@ -48,6 +48,7 @@ export function SiteNavigation() {
     <div className="site-tools">
       <nav aria-label="Main navigation">
         <Link href="/" aria-current={pathname === '/' ? 'page' : undefined}>Collection</Link>
+        <Link href="/submit" aria-current={pathname === '/submit' ? 'page' : undefined}>Submit</Link>
       </nav>
       <SiteAppearance />
     </div>

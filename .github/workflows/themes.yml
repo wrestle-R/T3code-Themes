@@ -1,0 +1,74 @@
+name: Theme checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  submission:
+    name: Theme submission
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Check out only the base. The contribution enters the build as validated JSON data.
+      - name: Check the contribution scope and theme package
+        id: submission
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch origin "refs/pull/${PR_NUMBER}/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+          slug="$(node next/scripts/check-submission.mjs "$BASE_SHA" "$HEAD_SHA")"
+          printf 'slug=%s\n' "$slug" >> "$GITHUB_OUTPUT"
+      - working-directory: next
+        run: npm ci
+      - working-directory: next
+        run: npx playwright install --with-deps chromium
+      - working-directory: next
+        run: npm run build
+      - name: Download the contributed theme in Chromium
+        working-directory: next
+        env:
+          CONTRIBUTION_SLUG: ${{ steps.submission.outputs.slug }}
+        run: |
+          npm run start -- --port 3000 &
+          npm run test:contribution
+
+  app:
+    name: App and theme behavior
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - working-directory: next
+        run: npm ci
+      - working-directory: next
+        run: npx playwright install --with-deps chromium
+      - working-directory: next
+        run: npm run build
+      - working-directory: next
+        run: |
+          npm run start -- --port 3000 &
+          npm run test:community
+          npm run test:browser
+          npm run test:minecraft

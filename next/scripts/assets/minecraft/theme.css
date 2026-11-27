@@ -1,0 +1,324 @@
+/* This theme uses T3 Code's own controls and lifecycle indicators. */
+:root.dark {
+  --mc-slot: #14161a;
+  --mc-slot-dark: #0b0c0e;
+  --mc-slot-light: #2b303a;
+  --mc-oak-edge: #3a3129;
+  --mc-xp: #80ff20;
+  --mc-branch: #38bdf8;
+  --mc-amber: #f4c36e;
+  --mc-error: #ff8585;
+  --diff-addition-foreground: #69d6a1;
+  --diff-deletion-foreground: #ff8585;
+}
+:root:not(.dark) {
+  --mc-slot: #f8f9fb;
+  --mc-slot-dark: #a9afbb;
+  --mc-slot-light: #dce0e6;
+  --mc-oak-edge: #c7b9a9;
+  --mc-xp: #137442;
+  --mc-branch: #116587;
+  --mc-amber: #855012;
+  --mc-error: #9e2222;
+  --diff-addition-foreground: #137442;
+  --diff-deletion-foreground: #a12525;
+}
+:root.dark :is([data-chat-canvas], [data-workspace-area="conversation"],
+    [data-slot="sidebar-wrapper"], :has(> [data-slot="sidebar"])) {
+  background-color: #121417;
+  background-image: var(--mc-deepslate);
+  background-size: 96px 96px;
+  image-rendering: pixelated;
+}
+:root.dark [data-slot="sidebar"] {
+  background-color: rgb(13 15 20 / 66%);
+  backdrop-filter: blur(16px) saturate(125%);
+  border-inline-end: 1px solid rgb(255 255 255 / 8%);
+  box-shadow: inset 1px 1px rgb(255 255 255 / 7%);
+}
+:root.dark [data-slot="sidebar-inner"] { background-color: transparent; }
+:root.dark [data-chat-composer-main-surface] {
+  background-color: rgb(15 17 23 / 86%);
+  backdrop-filter: blur(12px);
+}
+:root.dark [data-thread-item] [data-sidebar-row][aria-current="page"]:has(.text-info-foreground svg) {
+  background-image: linear-gradient(118deg, transparent 42%, rgb(168 85 247 / 12%) 49%, rgb(56 189 248 / 8%) 52%, transparent 59%);
+  background-size: 250% 100%;
+  animation: minecraft-enchantment 7s linear infinite;
+  animation-play-state: var(--theme-motion-state, running);
+}
+:root.dark :is([data-chat-canvas], [data-slot="sidebar"], [data-slot="sidebar-inner"]) :is(img, video, canvas) {
+  image-rendering: auto;
+}
+:is([data-slot="sidebar"], [data-slot="composer-host"], [data-thread-details-card],
+    [data-slot="dialog-popup"], [data-slot="alert-dialog-popup"], [data-slot="sheet-popup"],
+    [data-slot="popover-popup"], [data-slot="menu-popup"], [data-diffs-header],
+    [data-chat-composer-top-drawer], [data-composer-command-drawer], [data-composer-stash-drawer],
+    [data-user-message-bubble], .chat-markdown-codeblock, [data-chat-composer-main-surface],
+    [data-slot="input"], [data-slot="button"], [data-slot="select-trigger"],
+    [data-chat-composer-form] :is(input, textarea, button), [data-chat-header] button, [data-slot="sidebar"] button) {
+  border-radius: 2px;
+}
+:is([data-chat-composer-main-surface], [data-chat-composer-top-drawer], [data-composer-command-drawer],
+    [data-composer-stash-drawer], .chat-markdown-codeblock) {
+  background-color: var(--mc-slot);
+  border: 2px solid;
+  border-color: var(--mc-slot-light) var(--mc-slot-dark) var(--mc-slot-dark) var(--mc-slot-light);
+}
+[data-chat-composer-main-surface]:focus-within { border-color: var(--ring, var(--accent)); }
+[data-user-message-bubble] { border: 1px solid var(--mc-oak-edge); }
+:root.dark :is([data-user-message-bubble], [data-thread-details-card]) {
+  background-color: #191c22;
+  border: 2px solid;
+  border-color: var(--mc-slot-light) var(--mc-slot-dark) var(--mc-slot-dark) var(--mc-slot-light);
+}
+:root.dark [data-user-message-bubble] {
+  background-color: color-mix(in srgb, #30251e 24%, #191c22);
+  border-inline-start-color: var(--mc-oak-edge);
+}
+[data-chat-composer-form] button:is([aria-label="Stop generation"], [aria-label="Stopping"]),
+[data-mc-activity="Coding"] [data-chat-composer-compact-send],
+[data-mc-activity="Reasoning"] [data-chat-composer-compact-send] {
+  background-color: #d92b2b;
+  color: #fff;
+  border-radius: 2px;
+}
+[data-chat-composer-form] button[aria-label="Stop generation"]:enabled:hover { background-color: #bf2525; }
+
+:is([data-thread-now-line] .tabular-nums, [data-chat-thread-status-line] .tabular-nums,
+    [data-mc-preview-status], [data-thread-item] [data-slot="badge"],
+    [data-thread-item] .text-info-foreground:has(svg),
+    [data-sidebar-row="shelf:working"], [data-sidebar-row="shelf:settled"]) {
+  font-family: "Minecraft UI", ui-monospace, monospace;
+  font-size: 10px;
+}
+[data-chat-canvas]:has(button[aria-label="Stop generation"]) [data-thread-now-line] > span:first-child,
+[data-chat-canvas]:has(button[aria-label="Stop generation"]) [data-thread-now-line] .tabular-nums,
+[data-chat-canvas]:has(button[aria-label="Stop generation"]) [data-chat-thread-status-line] > svg,
+[data-thread-item] .text-info-foreground:has(svg),
+[data-thread-item] :is([class~="bg-sky-500"], [class~="dark:bg-sky-300/80"]) {
+  color: var(--mc-xp);
+}
+[data-thread-item] :is([class~="bg-sky-500"], [class~="dark:bg-sky-300/80"]) { background-color: var(--mc-xp); }
+[data-chat-canvas]:has(button[aria-label="Stop generation"]) button:has(> svg.lucide-git-branch),
+[data-mc-activity="Coding"] .checkout .preview-branch {
+  color: var(--mc-branch);
+  background-color: color-mix(in srgb, var(--mc-branch) 9%, var(--mc-slot));
+  border-radius: 2px;
+}
+:is(.text-diff-addition, .text-diff-addition-foreground) { color: var(--diff-addition-foreground); }
+:is(.text-diff-deletion, .text-diff-deletion-foreground) { color: var(--diff-deletion-foreground); }
+
+/* Keep the existing accessible control and replace just its artwork. */
+:is([data-chat-header], [data-thread-details-card], [data-workspace-area="composer"]) svg:is(.lucide-git-branch, .lucide-git-branch-plus) {
+  --mc-control-icon: var(--mc-craft);
+  color: var(--accent);
+}
+:is([data-open-favorite-editor], [aria-label="Open in VS Code"], [title="Open in VS Code"]) svg { --mc-control-icon: var(--mc-book); }
+:is([aria-label="Add project script"], [aria-label="Add action"]) svg { --mc-control-icon: var(--mc-repeater); }
+[data-workspace-area="composer"] :is([aria-label="Attach files"] svg, svg.lucide-paperclip),
+[data-composer-mention-chip] svg { --mc-control-icon: var(--mc-paper); }
+[data-composer-skill] svg { --mc-control-icon: var(--mc-emerald); }
+[data-composer-command-drawer] [data-slot="command-item"] svg.lucide-terminal { --mc-control-icon: var(--mc-command); }
+:is([data-chat-header], [data-thread-details-card], [data-workspace-area="composer"]) svg:is(.lucide-git-branch, .lucide-git-branch-plus),
+:is([data-open-favorite-editor], [aria-label="Open in VS Code"], [title="Open in VS Code"],
+    [aria-label="Add project script"], [aria-label="Add action"]) svg,
+[data-workspace-area="composer"] :is([aria-label="Attach files"] svg, svg.lucide-paperclip),
+:is([data-composer-mention-chip], [data-composer-skill]) svg,
+[data-composer-command-drawer] [data-slot="command-item"] svg.lucide-terminal {
+  width: 16px;
+  height: 16px;
+  background: var(--mc-control-icon) center / contain no-repeat;
+  image-rendering: pixelated;
+}
+:is([data-chat-header], [data-thread-details-card], [data-workspace-area="composer"]) svg:is(.lucide-git-branch, .lucide-git-branch-plus) > *,
+:is([data-open-favorite-editor], [aria-label="Open in VS Code"], [title="Open in VS Code"],
+    [aria-label="Add project script"], [aria-label="Add action"]) svg > *,
+[data-workspace-area="composer"] :is([aria-label="Attach files"] svg, svg.lucide-paperclip) > *,
+:is([data-composer-mention-chip], [data-composer-skill]) svg > *,
+[data-composer-command-drawer] [data-slot="command-item"] svg.lucide-terminal > * { visibility: hidden; }
+
+/* One companion per main composer. State is read from the current thread's own UI. */
+[data-chat-canvas] {
+  --mc-buddy-size: 64px;
+  --mc-buddy-inset: 22px;
+  --mc-model-mob: var(--mc-openai);
+  --mc-model-fast: var(--mc-openai-fast);
+  --mc-model-heavy: var(--mc-openai-heavy);
+  --mc-buddy: var(--mc-picked-buddy, var(--mc-model-mob));
+  --mc-standard-buddy: var(--mc-picked-buddy, var(--mc-model-mob));
+  --mc-working-buddy: var(--mc-standard-buddy);
+  --mc-pose: 0%;
+  --mc-move: minecraft-idle 4s steps(1, end) infinite;
+  --mc-indicator: var(--mc-elsewhere, none);
+  --mc-indicator-ink: var(--accent, #38bdf8);
+  --mc-sparks: none;
+  --mc-sparks-motion: none;
+  --mc-effort-sparks: none;
+  --mc-effort-glint: none;
+  --mc-effort-motion: none;
+  --mc-effort-lift: 0px;
+  --mc-lift: 0px;
+  --mc-gear-glint: none;
+}
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *):is(
+  [aria-label*="claude" i], [aria-label*="haiku" i], [aria-label*="sonnet" i], [aria-label*="opus" i]),
+  [data-chat-provider-model-picker]:not([data-side-chat-pane] *) [data-provider-kind="claude"]) {
+  --mc-model-mob: var(--mc-claude);
+  --mc-model-fast: var(--mc-claude-fast);
+  --mc-model-heavy: var(--mc-claude-heavy);
+}
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *):is([aria-label*="gemini" i], [aria-label*="antigravity" i])) {
+  --mc-model-mob: var(--mc-gemini);
+  --mc-model-fast: var(--mc-gemini-fast);
+  --mc-model-heavy: var(--mc-gemini-heavy);
+}
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *)[aria-label*="opencode" i]) {
+  --mc-model-mob: var(--mc-opencode);
+  --mc-model-fast: var(--mc-opencode-fast);
+  --mc-model-heavy: var(--mc-opencode-heavy);
+}
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *):is(
+  [aria-label*="opus" i], [aria-label*=" pro" i], [aria-label*="-pro" i],
+  [aria-label*="o1" i], [aria-label*="o3" i], [aria-label*=" sol" i], [aria-label*="-sol" i])) {
+  --mc-working-buddy: var(--mc-picked-heavy, var(--mc-model-heavy));
+}
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *):is(
+  [aria-label*="haiku" i], [aria-label*="flash" i],
+  [aria-label*=" mini" i], [aria-label*="-mini" i], [aria-label^="mini" i],
+  [aria-label*=" nano" i], [aria-label*="-nano" i], [aria-label^="nano" i])) {
+  --mc-working-buddy: var(--mc-picked-fast, var(--mc-model-fast));
+}
+/* Composer label = model name + optional effort detail. Material and effort cascade independently. */
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *):is(
+  [aria-label$=" medium" i], [aria-label*=", medium," i], [aria-label*="reasoning: medium" i],
+  [aria-label*="medium reasoning" i], [aria-label*="thinking on" i])) {
+  --mc-effort-sparks: var(--mc-effort-sparks-art);
+  --mc-effort-glint: linear-gradient(125deg, transparent 38%, rgb(192 132 252 / 45%) 49%, transparent 62%);
+  --mc-effort-motion: minecraft-glints 3.2s steps(4, end) infinite;
+}
+[data-chat-canvas]:has([data-chat-provider-model-picker]:not([data-side-chat-pane] *):is(
+  [aria-label$=" high" i], [aria-label*=", high," i], [aria-label$=" max" i], [aria-label*=", max," i],
+  [aria-label*="xhigh" i], [aria-label*="extra high" i], [aria-label*="ultrathink" i], [aria-label*="deep reasoning" i],
+  [aria-label*="high reasoning" i], [aria-label*="max reasoning" i],
+  [aria-label*="reasoning: high" i], [aria-label*="reasoning: max" i])) {
+  --mc-effort-sparks: var(--mc-effort-runes);
+  --mc-effort-glint: linear-gradient(125deg, transparent 32%, rgb(192 132 252 / 65%) 47%, rgb(103 232 249 / 48%) 53%, transparent 68%);
+  --mc-effort-motion: minecraft-max-glints 2.6s steps(5, end) infinite;
+  --mc-effort-lift: -4px;
+}
+:root:has([data-thread-item]:not([hidden]) [data-sidebar-row]:not([aria-current="page"], [aria-current="true"])
+  :is([class~="bg-sky-500"], [class~="dark:bg-sky-300/80"], .text-info-foreground svg)) {
+  --mc-elsewhere: "z";
+}
+[data-chat-canvas][data-mc-activity="Background"] { --mc-indicator: "z"; }
+[data-chat-canvas]:where([data-mc-activity="Coding"], :has([data-workspace-area="composer"]:not([data-side-chat-pane] *) button:is([aria-label="Stop generation"], [aria-label="Stopping"]):not([hidden]))) {
+  --mc-pose: 100%;
+  --mc-buddy: var(--mc-working-buddy);
+  --mc-move: minecraft-working .85s steps(1, end) infinite;
+  --mc-indicator: "◆";
+  --mc-indicator-ink: var(--mc-xp);
+  --mc-sparks: var(--mc-effort-sparks);
+  --mc-gear-glint: var(--mc-effort-glint);
+  --mc-sparks-motion: var(--mc-effort-motion);
+  --mc-lift: var(--mc-effort-lift);
+}
+[data-chat-canvas]:where([data-mc-activity="Reasoning"],
+  :has([data-workspace-area="composer"]:not([data-side-chat-pane] *) button[aria-label="Stop generation"]):has(
+    [data-v2-item-type="reasoning"]:not([data-side-chat-pane] *) :is(.live-tool-shine, .lucide-brain.text-foreground))) {
+  --mc-pose: 66.6667%;
+  --mc-buddy: var(--mc-working-buddy);
+  --mc-move: minecraft-thinking 2.2s steps(1, end) infinite;
+  --mc-indicator: "\25c6";
+  --mc-indicator-ink: var(--mc-xp);
+  --mc-sparks: var(--mc-effort-sparks);
+  --mc-gear-glint: var(--mc-effort-glint);
+  --mc-sparks-motion: var(--mc-effort-motion);
+  --mc-lift: var(--mc-effort-lift);
+}
+[data-chat-canvas]:where([data-mc-activity="Error"],
+  :has([data-timeline-row-kind]:nth-last-child(1 of [data-timeline-row-kind]) [data-v2-item-type="error"]:not([data-side-chat-pane] *)),
+  :has([data-thread-now-line][role="alert"]:not([data-side-chat-pane] *) > span:first-child > svg.text-warning-foreground)) {
+  --mc-pose: 33.3333%;
+  --mc-buddy: var(--mc-standard-buddy);
+  --mc-move: minecraft-hurt .38s steps(1, end) 2;
+  --mc-indicator: "×";
+  --mc-indicator-ink: var(--mc-error);
+  --mc-sparks: none;
+  --mc-gear-glint: none;
+  --mc-sparks-motion: none;
+  --mc-lift: 0px;
+}
+[data-chat-canvas]:where([data-mc-activity="Approval"], :has([data-chat-composer-top-drawer]:not([data-side-chat-pane] *))) {
+  --mc-pose: 33.3333%;
+  --mc-buddy: var(--mc-standard-buddy);
+  --mc-move: none;
+  --mc-indicator: "!";
+  --mc-indicator-ink: var(--mc-amber);
+  --mc-sparks: none;
+  --mc-gear-glint: none;
+  --mc-sparks-motion: none;
+  --mc-lift: 0px;
+}
+[data-chat-canvas] [data-chat-composer-main-surface]:not([data-side-chat-pane] *) { position: relative; }
+/* Reserve the perch within the measured form, below the native status actions. */
+[data-chat-canvas] :is([data-chat-composer-form], [data-chat-composer-form] *):not([data-side-chat-pane] *):has(> [data-chat-composer-main-surface]) {
+  padding-block-start: var(--mc-buddy-size);
+}
+[data-chat-canvas] [data-chat-composer-main-surface]:not([data-side-chat-pane] *)::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: auto var(--mc-buddy-inset) calc(100% - 6px) auto;
+  z-index: 3;
+  width: var(--mc-buddy-size);
+  height: var(--mc-buddy-size);
+  border: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  background: var(--mc-buddy) no-repeat var(--mc-pose) 0 / 400% 100%;
+  translate: 0 var(--mc-lift);
+  animation: var(--mc-move);
+  animation-play-state: var(--theme-motion-state, running);
+}
+[data-chat-canvas] [data-chat-composer-main-surface]:not([data-side-chat-pane] *)::before {
+  content: var(--mc-indicator);
+  display: grid;
+  place-items: center end;
+  position: absolute;
+  inset: auto 8px calc(100% - 6px) auto;
+  z-index: 4;
+  width: 96px;
+  height: 72px;
+  pointer-events: none;
+  border: 0;
+  background: var(--mc-sparks) center / contain no-repeat,
+    var(--mc-gear-glint) right 17px bottom 16px / 15px 15px no-repeat;
+  image-rendering: pixelated;
+  animation: var(--mc-sparks-motion);
+  animation-play-state: var(--theme-motion-state, running);
+  color: var(--mc-indicator-ink);
+  font: 10px/1 ui-monospace, monospace;
+}
+@keyframes minecraft-idle {
+  76% { translate: 0 -1px; }
+  88% { translate: 0 0; background-position-x: var(--mc-pose); }
+  93% { background-position-x: 33.3333%; }
+  97% { background-position-x: var(--mc-pose); }
+}
+@keyframes minecraft-working { 50% { translate: 1px var(--mc-lift); } }
+@keyframes minecraft-thinking { 50% { translate: 0 calc(var(--mc-lift) - 1px); } }
+@keyframes minecraft-glints { 50% { background-position: center -4px, right 20px bottom 20px; } }
+@keyframes minecraft-max-glints {
+  50% { background-position: center -8px, right 20px bottom 22px; opacity: .72; }
+}
+@keyframes minecraft-enchantment { from { background-position-x: 160%; } to { background-position-x: -60%; } }
+@keyframes minecraft-hurt { 0% { filter: sepia(1) saturate(9) hue-rotate(318deg); } 55% { filter: none; } }
+@media (prefers-reduced-motion: reduce) {
+  :root.dark [data-thread-item] [data-sidebar-row][aria-current="page"]:has(.text-info-foreground svg) {
+    background-image: none;
+    animation: none !important;
+  }
+  [data-chat-canvas] [data-chat-composer-main-surface]::before,
+  [data-chat-canvas] [data-chat-composer-main-surface]::after { animation: none !important; }
+}

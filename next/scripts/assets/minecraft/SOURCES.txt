@@ -7,8 +7,24 @@ resource_pack/textures/entity, and resource_pack/textures/blocks.
 See LICENSE.txt for Mojang's terms. Minecraft is a trademark of Mojang.
 This independent theme is not an official Minecraft product.
 
-Sword portal layout reference: https://minecaft-showcase.vercel.app/#sword
-This theme renders its own block arrangement, using vanilla textures.
+Minecraft builds original pixel sprites and a deepslate tile with Pillow.
+Minecraft Retro uses the vanilla assets.
+
+Desktop theme runtime
+The installed T3 Code theme schema accepts palette roles, CSS, and an optional
+background image. The app inserts the CSS into a stylesheet. Theme files
+cannot run JavaScript or add DOM, event handlers, or form inputs.
+CSS can read the native model picker through its accessible label. A clickable
+pseudo-element cannot keep its own selection or change the model. A native
+mob picker needs a persisted T3 Code preference and an app-owned control.
+
+Use Match model for automatic selection. To pin a mob, select it in the studio
+composer footer, download the JSON, and import it in Settings > Appearance.
+The pinned mob still gets its working gear from the active model label.
+The model name selects the weapon material. The effort detail in the native
+picker's accessible label independently selects the enchantment. An absent
+or unrecognized effort detail leaves the weapon unenchanted.
 
 Rebuild from next/:
+uv run --with pillow python scripts/build-minecraft-workbench.py
 uv run --with numpy --with pillow python scripts/build-minecraft.py
