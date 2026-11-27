@@ -450,14 +450,15 @@ async function testBlockworks(browser) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
     assert.ok(await page.locator('.preview-toolbar').evaluate(el => el.scrollWidth <= el.clientWidth));
-    const clearsMessages = await dock.evaluate(el => {
+    const clearance = await dock.evaluate(el => {
       const icon = getComputedStyle(el, '::after');
-      const top = el.getBoundingClientRect().top - parseFloat(icon.height);
+      const aura = getComputedStyle(el, '::before');
+      const decorationHeight = Math.max(parseFloat(icon.height), parseFloat(aura.height));
+      const top = el.getBoundingClientRect().top - decorationHeight;
       const timeline = el.ownerDocument.querySelector('.preview-messages');
-      const lastMessage = timeline.querySelector('[data-timeline-row-kind="assistant"]');
-      return top > Math.min(timeline.getBoundingClientRect().bottom, lastMessage.getBoundingClientRect().bottom);
+      return top - timeline.getBoundingClientRect().bottom;
     });
-    assert.ok(clearsMessages, 'The buddy should clear the conversation at ' + width + 'px');
+    assert.ok(clearance > 0, `The buddy and its effects should clear the conversation at ${width}px, got ${clearance}px`);
   }
   await page.getByRole('button', { name: 'Reset' }).click();
   assert.equal(await buddy.inputValue(), 'auto');

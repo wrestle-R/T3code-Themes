@@ -69,7 +69,6 @@ h1 { margin: 0 0 12px; font-size: 15px; font-weight: 600; letter-spacing: -.02em
   .composer-tools { margin-top: 12px; }
 }
 
-[data-preview-scene="minecraft"][data-preview-conversation] .preview-messages { padding-top: 32px; }
 [data-preview-scene="minecraft"] .preview-messages [data-user-message-bubble] { background: var(--message); border-radius: 2px; }
 [data-preview-scene="minecraft"] .composer-tools { gap: 6px; flex-wrap: wrap; }
 [data-preview-scene="minecraft"] .composer-tools [data-chat-provider-model-picker] { margin-left: 0; }
@@ -117,7 +116,19 @@ h1 { margin: 0 0 12px; font-size: 15px; font-weight: 600; letter-spacing: -.02em
 .preview-shell .preview-messages { width: min(78%, 640px); padding: 66px 0 12px; height: calc(100% - 148px); overflow: auto; font-size: 14px; }
 .preview-shell .preview-messages [data-user-message-bubble] { width: fit-content; margin: 0 0 20px auto; background: var(--message, var(--composer)); color: var(--message-ink, var(--text)); }
 .preview-shell .preview-messages li { margin-block: 6px; }
-.preview-shell [data-preview-scene="minecraft"] .preview-messages { height: calc(100% - 225px); padding-top: 58px; }
+.preview-shell [data-preview-scene="minecraft"][data-preview-conversation] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100dvh;
+}
+.preview-shell [data-preview-scene="minecraft"][data-preview-conversation] .demo { height: 100%; min-height: 0; }
+.preview-shell [data-preview-scene="minecraft"][data-preview-conversation] .preview-composer {
+  position: relative;
+  inset: auto;
+  /* Reserve space above the composer for the buddy and its enchantment. */
+  padding-top: 76px;
+}
+.preview-shell [data-preview-scene="minecraft"] .preview-messages { height: 100%; padding-top: 58px; }
 .preview-shell .preview-messages:focus-visible { outline: 1px solid var(--accent, var(--muted)); outline-offset: -2px; }
 .preview-shell .submit { background: var(--accent, var(--border)); color: var(--accent-ink, var(--text)); }
 .preview-details { display: none; }
