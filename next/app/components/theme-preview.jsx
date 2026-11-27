@@ -128,7 +128,7 @@ function PreviewConversation({ slug, parent, agents, conversation, activity, rea
             {agents.length > 0 && <School agents={agents} />}
             {conversation && <div className="messages-timeline-scroll preview-messages" aria-label="Sample conversation" tabIndex={0}>
               <div data-timeline-row-kind="user"><p data-user-message-bubble="">Can we make the workspace easier to scan?</p></div>
-              <div data-timeline-row-kind="assistant"><p>I tightened the thread list and gave the composer a little more room. The current branch is visible beside the message box.</p><ul><li>Grouped recent threads under the project.</li><li>Matched the sidebar and composer colors.</li></ul></div>
+              <div data-timeline-row-kind="assistant"><p>I grouped recent threads by project and moved the branch name next to the composer.</p></div>
             </div>}
           </div>
         </div>

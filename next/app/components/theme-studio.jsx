@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { ArrowDown, ArrowLeft, ChevronRight, Maximize2, PanelLeft, RotateCcw, Search, Upload, X } from 'lucide-react';
+import { ChevronRight, Maximize2, PanelLeft, RotateCcw, Search, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { minecraftMobs, pondProviders, themes } from '../themes';
 import { ThemePreview, useTheme } from './theme-preview';
@@ -173,7 +172,6 @@ function SubagentTest({ parent, setParent, agents, running, spawn, finish, disab
         <h2 id="school-title">Test subagents</h2>
         <span className="school-count" role="status">{running} of {agentLimit} running</span>
       </header>
-      <p className="school-description">Add up to three subagents to the main thread preview.</p>
       <fieldset className="school-fields" disabled={disabled}>
         <label className="parent-control">Main thread model
           <select value={parent} onChange={event => setParent(event.target.value)}>
@@ -228,11 +226,13 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
   const defaultParent = theme.previewProvider || 'OpenAI';
   const { config, error } = useTheme(theme.download, initialConfig);
   const [editing, setEditing] = useState(true);
+  const [panel, setPanel] = useState('colors');
   const [colorSearch, setColorSearch] = useState('');
   const [imported, setImported] = useState(null);
   const [importStatus, setImportStatus] = useState('');
   const [palette, setPalette] = useState({ light: {}, dark: {} });
   const fileInput = useRef(null);
+  const editorScroll = useRef(null);
   const [values, setValues] = useState(theme.defaults);
   const [drafts, setDrafts] = useState({});
   const [appearance, setAppearance] = useState(theme.appearance || 'dark');
@@ -254,7 +254,12 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
       (token !== 'canvas' || !hasBackgrounds || !sameTheme) &&
       (!search || (group + ' ' + labelToken(token)).toLowerCase().includes(search)))])
     .filter(([, tokens]) => tokens.length > 0);
-  const hasEffects = sameTheme && (hasBackgrounds || theme.motionLabel || hasAgents);
+  const hasEffects = sameTheme && Boolean(hasBackgrounds || theme.motionLabel);
+  const showAgents = sameTheme && hasAgents;
+  const panels = [['colors', 'Colors']];
+  if (hasEffects) panels.push(['effects', isPond ? 'Fish' : 'Effects']);
+  if (showAgents) panels.push(['agents', 'Agents']);
+  const activePanel = panels.some(([id]) => id === panel) ? panel : 'colors';
   const showBackgrounds = hasBackgrounds && sameTheme && (!search || ['background', 'light base', 'dark base'].some(label => label.includes(search)));
   const invalid = Object.values(drafts).some(draft => draft != null && !/^#?[\da-f]{6}$/i.test(draft));
   const canReset = imported || Object.keys(palette.dark).length || Object.keys(palette.light).length || invalid || values.still || agents.length > 0 || parent !== defaultParent
@@ -366,9 +371,7 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
     <main className="wrap studio" id="main" data-studio={slug}>
       <header className="studio-intro">
         <div>
-          <Link href="/#themes" className="text-link back-link"><ArrowLeft size={16} aria-hidden="true" /> Collection</Link>
           <h1>{imported?.name || theme.name}</h1>
-          <p>{theme.studioDescription}</p>
           {!imported && theme.author && <p className="theme-byline">
             By {theme.github ? <a href={theme.github}>{theme.author}</a> : theme.author}
             {theme.website && <> · <a href={theme.website}>Website</a></>}
@@ -381,7 +384,7 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
             {editing ? <Maximize2 size={15} aria-hidden="true" /> : <PanelLeft size={15} aria-hidden="true" />}
             {editing ? 'Full preview' : 'Customize'}
           </button>
-          <a className="text-link install-link" href="#install">Install <ArrowDown size={15} aria-hidden="true" /></a>
+          <a className="text-link install-link" href="#install">Install</a>
           {base && <DownloadAction form="theme-settings" disabled={invalid} />}
         </div>
       </header>
@@ -394,18 +397,27 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
             onMobChange={isMinecraft && sameTheme ? mob => updateValue('mob', mob) : undefined} />
         </section>
 
-        <aside className="studio-sidebar" aria-label="Theme controls" hidden={!editing}>
-          <section className="studio-settings" id="customize" aria-labelledby="settings-title">
-            <header className="editor-heading">
-              <h2 id="settings-title">Colors</h2>
-              {hasEffects && <a className="editor-effects-link" href={hasBackgrounds || theme.motionLabel ? '#preview-effects' : '#school-title'}>Effects <ArrowDown size={13} aria-hidden="true" /></a>}
-            </header>
+        <aside className="studio-sidebar" id="customize" aria-label="Theme controls" hidden={!editing}>
+          <div className="editor-bar">
+            <div className="editor-panels" role="group" aria-label="Theme settings">
+              {panels.map(([id, label]) => (
+                <button type="button" key={id} aria-controls={`theme-${id}`} aria-pressed={id === activePanel} onClick={() => {
+                  setPanel(id);
+                  editorScroll.current.scrollTop = 0;
+                }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {base && <button className="editor-reset" type="reset" form="theme-settings" disabled={!canReset} title="Reset theme" aria-label="Reset"><RotateCcw size={14} aria-hidden="true" /></button>}
+          </div>
+          <div className="editor-scroll" ref={editorScroll}>
             {error && !imported ? (
               <p className="studio-fallback">Customization is unavailable. <a className="open-theme" href={theme.download} download>Download original theme</a></p>
             ) : (
               <form id="theme-settings" onSubmit={download} onReset={reset}>
                 <fieldset className="settings-controls" disabled={!configured}>
-                  <div className="palette-fields">
+                  <div className="palette-fields" id="theme-colors" hidden={activePanel !== 'colors'}>
                     <p className="editor-mode">{appearance === 'dark' ? 'Dark palette' : 'Light palette'}</p>
                     <label className="editor-search">
                       <Search size={15} aria-hidden="true" />
@@ -418,15 +430,14 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
                       ))}
                     </details>}
                     {visibleGroups.map(([group, tokens]) => (
-                      <details className="palette-group" key={search + ':' + group} open={Boolean(search) || group === 'Workspace' || group === 'Sidebar'}>
+                      <details className="palette-group" key={search + ':' + group} open={Boolean(search) || group === 'Workspace'}>
                         <summary><ChevronRight size={14} aria-hidden="true" /> {group}</summary>
                         {tokens.map(token => renderPaletteField(token, labelToken(token)))}
                       </details>
                     ))}
                     {!showBackgrounds && visibleGroups.length === 0 && <p className="settings-hint">No colors match this search.</p>}
                   </div>
-                  {sameTheme && (hasBackgrounds || theme.motionLabel) && <div className="motion-fields">
-                    <h3 id="preview-effects">Theme effects</h3>
+                  {hasEffects && <div className="motion-fields" id="theme-effects" hidden={activePanel !== 'effects'}>
                     {isMinecraft && <>
                       <label className="parent-control mob-activity">Main thread model
                         <select value={parent} onChange={event => setParent(event.target.value)}>
@@ -488,14 +499,13 @@ export function ThemeStudio({ slug, theme = themes[slug], initialConfig }) {
                       </fieldset>
                     )}
                   </div>}
-                  <div className="studio-actions">
-                    <button className="open-theme" type="reset" disabled={!canReset}><RotateCcw size={15} aria-hidden="true" /> Reset</button>
-                  </div>
                 </fieldset>
               </form>
             )}
-          </section>
-          {hasAgents && <SubagentTest parent={parent} setParent={setParent} agents={agents} running={running} spawn={spawn} finish={finish} disabled={!configured} />}
+            {showAgents && <div id="theme-agents" hidden={activePanel !== 'agents'}>
+              <SubagentTest parent={parent} setParent={setParent} agents={agents} running={running} spawn={spawn} finish={finish} disabled={!configured} />
+            </div>}
+          </div>
         </aside>
       </div>
       <InstallInstructions name={imported?.name || theme.name} />

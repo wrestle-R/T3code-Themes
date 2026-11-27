@@ -2,13 +2,17 @@
 
 Use the [submission form](https://t3code-themes.vercel.app/submit) to prepare a GitHub issue with a link to your theme. Post the issue on GitHub to send it for review. For a direct contribution, fork the repository and open a pull request that adds one file at `next/community/<slug>.json`.
 
+I started this gallery because I wanted something a bit more animated in T3 Code. I’d love to see themes with some motion, even if it’s just a small detail. Plain color-only themes are discouraged. If your theme has animated characters, I’d prefer a different character, look, or movement for each agent so I can tell them apart at a glance. Koi Pond, for example, gives Claude, OpenAI, Gemini, and OpenCode their own fish.
+
+## Theme package
+
 The package contains a version 1 T3 Code theme and the metadata shown in the gallery.
 
 ```json
 {
   "author": { "name": "Your Name", "github": "your-github-handle", "website": "https://example.com" },
-  "description": "A quiet workspace with a plum sidebar.",
-  "tags": ["Minimal", "Dark"],
+  "description": "A plum workspace with a slow pulse around the composer.",
+  "tags": ["Animated", "Dark"],
   "theme": {
     "version": 1,
     "id": "plum-workspace",
@@ -18,7 +22,7 @@ The package contains a version 1 T3 Code theme and the metadata shown in the gal
     "accent": "#dbacf6",
     "colors": { "sidebar": "#2d2033", "text": "#f6eef9" },
     "variants": { "light": { "canvas": "#fff6fd", "text": "#241827" } },
-    "css": ""
+    "css": "@keyframes plum-glow { 50% { box-shadow: 0 0 12px #dbacf655; } } @media (prefers-reduced-motion: no-preference) { [data-chat-composer-main-surface] { animation: plum-glow 5s ease-in-out infinite; } }"
   }
 }
 ```

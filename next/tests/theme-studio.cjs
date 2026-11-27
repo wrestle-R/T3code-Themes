@@ -58,6 +58,8 @@ async function setSlider(slider, value) {
   assert.equal(await slider.getAttribute('aria-valuenow'), String(value));
 }
 
+const openPanel = (page, name) => page.getByRole('button', { name, exact: true }).click();
+
 async function testStudio(browser) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   const errors = [];
@@ -68,6 +70,7 @@ async function testStudio(browser) {
   const add = provider => page.getByRole('button', { name: 'Add ' + provider + ' subagent' });
   const finish = provider => page.getByRole('button', { name: 'Finish ' + provider + ' subagent' });
   const spawn = add('Claude');
+  await openPanel(page, 'Agents');
   await spawn.waitFor();
   await page.getByRole('button', { name: 'Download JSON' }).waitFor();
   const reset = page.getByRole('button', { name: 'Reset' });
@@ -138,8 +141,10 @@ async function testStudio(browser) {
   assert.equal((await readPond(frame)).length, 1);
 
   await page.getByLabel('Main thread model').selectOption('Claude');
+  await openPanel(page, 'Fish');
   const claudeLapTime = page.getByRole('slider', { name: 'Claude lap time' });
   await setSlider(claudeLapTime, 91);
+  await openPanel(page, 'Colors');
   const lightHex = page.getByRole('textbox', { name: 'Light base hex' });
   await page.getByRole('radio', { name: 'Dark', exact: true }).check();
   await lightHex.fill('DDE4DC');
@@ -154,6 +159,7 @@ async function testStudio(browser) {
   await lightHex.blur();
   assert.equal(await lightHex.inputValue(), '#DDE4DC');
   assert.equal((await readPond(frame))[0].duration, '91s');
+  await openPanel(page, 'Fish');
   await page.getByRole('switch', { name: 'Keep fish still' }).click();
   assert.equal((await readPond(frame))[0].motion, 'none');
   assert.ok(await claudeLapTime.isDisabled());
@@ -163,6 +169,7 @@ async function testStudio(browser) {
   assert.equal(pond.variants.light.canvas, '#dde4dc');
   assert.match(pond.css, /--koi-claude-time: 91s/);
   assert.doesNotMatch(pond.css, /--koi-reflection/);
+  await openPanel(page, 'Agents');
   // A finished slot can be reused and Reset clears a running simulation.
   for (let count = 0; count < 3; count++) await spawn.click();
   assert.ok(await spawn.isDisabled());
@@ -172,8 +179,10 @@ async function testStudio(browser) {
   assert.ok(await spawn.isDisabled());
   await reset.click();
   assert.ok(await reset.isDisabled());
+  await openPanel(page, 'Fish');
   assert.equal(await page.getByRole('slider', { name: 'Claude lap time' }).getAttribute('aria-valuenow'), '72');
   assert.equal((await readPond(frame))[0].duration, '72s');
+  await openPanel(page, 'Agents');
   assert.equal(await page.getByLabel('Main thread model').inputValue(), 'Claude');
   assert.equal(await frame.locator('.demo .studio-group').count(), 0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -193,6 +202,7 @@ async function testStudio(browser) {
   assert.deepEqual((await readPond(frame)).map(fish => fish.track), ['t3-koi-openai', 't3-koi-opencode']);
   await finish('OpenCode').click();
   assert.equal((await readPond(frame)).length, 1);
+  await openPanel(page, 'Fish');
   await setSlider(page.getByRole('slider', { name: 'OpenCode lap time' }), 62);
   assert.match((await exportedTheme(page)).css, /--koi-opencode-time: 62s/);
 
@@ -206,6 +216,7 @@ async function testStudio(browser) {
   await page.waitForURL('**/dark-texture');
   await page.getByRole('radio', { name: 'Light', exact: true }).check();
   const texturePond = frame.locator('.demo');
+  await openPanel(page, 'Effects');
   const grain = page.getByRole('slider', { name: 'Grain strength' });
   await texturePond.evaluate(async pond => {
     const image = new Image();
@@ -219,8 +230,10 @@ async function testStudio(browser) {
   await setSlider(grain, 100);
   assert.ok(await grainContrast(page, texturePond) > defaultContrast);
 
+  await openPanel(page, 'Colors');
   await page.locator('input[name="light"]').fill('#dadfe8');
   assert.equal(await texturePond.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(218, 223, 232)');
+  await openPanel(page, 'Effects');
   await setSlider(grain, 29);
   assert.equal(await texturePond.evaluate(el => getComputedStyle(el, '::before').opacity), '0.29');
   await page.getByRole('radio', { name: 'Dark', exact: true }).check();
@@ -233,6 +246,7 @@ async function testStudio(browser) {
   await page.getByRole('link', { name: 'Install' }).click();
   assert.ok(await page.getByRole('heading', { name: 'Install Dark texture' }).isVisible());
   assert.ok(await page.getByText('Import a file', { exact: true }).isVisible());
+  await openPanel(page, 'Colors');
   assert.equal(await page.locator('input[name="light"]').inputValue(), '#dadfe8');
   assert.deepEqual(errors, []);
 
@@ -250,6 +264,7 @@ async function testStandaloneGemini(browser) {
   await page.goto(new URL('/koi-pond', site).href);
   const frame = page.frameLocator('.studio-viewport iframe');
   await frame.locator('.demo').waitFor();
+  await openPanel(page, 'Agents');
   await page.getByLabel('Main thread model').selectOption('OpenAI');
 
   // T3 Code renders a single delegated task outside the grouped timeline row.
@@ -340,6 +355,7 @@ async function testBlockworks(browser) {
   await page.goto(site);
   const original = await (await page.request.get(new URL('/downloads/minecraft.json', site).href)).json();
   await page.goto(new URL('/minecraft', site).href);
+  await openPanel(page, 'Effects');
   const model = page.getByLabel('Main thread model');
   const frame = page.frameLocator('.studio-viewport iframe');
   const pond = frame.locator('.demo');
@@ -508,6 +524,7 @@ async function testNightfall(browser) {
       state: lights.animationPlayState,
     };
   });
+  await openPanel(page, 'Agents');
   assert.equal(await page.getByRole('button', {name:'Add Claude subagent'}).count(), 1);
   const snowmen = () => frame.locator('[data-assistant-citation-viewport]').evaluate(el => getComputedStyle(el, '::after').backgroundImage);
   assert.equal((await snowmen()).match(/data:image\/svg/g).length, 1);
@@ -520,6 +537,7 @@ async function testNightfall(browser) {
   await page.getByRole('button', {name: 'Finish Gemini subagent'}).click();
   assert.equal((await snowmen()).match(/data:image\/svg/g).length, 3);
   await page.getByRole('button', { name: 'Reset' }).click();
+  await openPanel(page, 'Effects');
   const slider = page.getByRole('slider', {name:'Snowfall intensity'});
   await slider.focus(); await slider.press('Home');
   assert.equal(await pond.evaluate(el => getComputedStyle(el,'::before').opacity), '0');
@@ -530,7 +548,9 @@ async function testNightfall(browser) {
   const glow = page.getByRole('slider', {name:'Light glow'});
   await glow.focus(); await glow.press('Home');
   assert.match((await exportedTheme(page)).css, /--nightfall-light-brightness: 0/);
+  await openPanel(page, 'Colors');
   await page.getByRole('textbox', {name:'Dark base hex'}).fill('#201e24');
+  await openPanel(page, 'Effects');
   assert.equal((await exportedTheme(page)).colors.canvas, '#201e24');
   await page.getByRole('switch', {name:'Snow on the chat box'}).click();
   assert.match((await exportedTheme(page)).css, /--nightfall-ledge: var\(--nightfall-bare\)/);

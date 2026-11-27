@@ -53,6 +53,14 @@ async function main() {
     await page.getByLabel('Sidebar background hex', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Main text hex', { exact: true }).count(), 0);
     await page.getByRole('searchbox', { name: 'Find a color' }).clear();
+    await page.getByText('Sidebar', { exact: true }).click();
+    await page.getByRole('button', { name: 'Fish', exact: true }).click();
+    await page.getByRole('slider', { name: 'Claude lap time' }).waitFor();
+    assert.equal(await page.getByRole('searchbox', { name: 'Find a color' }).isVisible(), false);
+    await page.getByRole('button', { name: 'Agents', exact: true }).click();
+    await page.getByRole('button', { name: 'Add Claude subagent' }).click();
+    await frame.getByRole('button', { name: '1 subagent' }).waitFor();
+    await page.getByRole('button', { name: 'Colors', exact: true }).click();
     await page.getByLabel('Preview conversation state').selectOption('conversation');
     await frame.getByText('Can we make the workspace easier to scan?').waitFor();
     await page.getByLabel('Sidebar background hex', { exact: true }).fill('#345678');
@@ -121,6 +129,17 @@ async function main() {
         assert.match(await shell.evaluate(el => getComputedStyle(el).fontFamily), /system-ui/);
         await page.getByLabel('Preview conversation state').selectOption('conversation');
         await preview.getByText('Can we make the workspace easier to scan?').waitFor();
+        if (path === '/koi-pond') {
+          await page.getByRole('button', { name: 'Agents', exact: true }).click();
+          await page.getByRole('button', { name: 'Add Gemini subagent' }).click();
+          const working = preview.getByRole('button', { name: '1 subagent' });
+          assert.ok(await working.evaluate(el => {
+            const badge = el.getBoundingClientRect();
+            const timeline = el.ownerDocument.querySelector('.preview-messages').getBoundingClientRect();
+            const composer = el.ownerDocument.querySelector('.composer').getBoundingClientRect();
+            return badge.top >= timeline.bottom && badge.bottom <= composer.top;
+          }), 'Koi agent status sits between the conversation and composer at ' + width + 'px');
+        }
         await page.getByRole('radio', { name: 'Light', exact: true }).check();
         await preview.locator('html:not(.dark)').waitFor({ state: 'attached' });
         await page.getByRole('radio', { name: 'Dark', exact: true }).check();
