@@ -169,7 +169,7 @@ function PreviewConversation({ slug, parent, agents, conversation, activity, rea
 export function ThemePreview({ slug, theme = themes[slug], config, error, appearance, onAppearanceChange, studio = false, parent = 'OpenAI', agents = emptyAgents, activity = 'Idle', reasoning, mob, onMobChange }) {
   const previewCss = useContext(PreviewStyles);
   const [frame, setFrame] = useState(null);
-  const [conversation, setConversation] = useState(false);
+  const [conversation, setConversation] = useState(studio && slug === 'virar-fast');
   const preview = useRef(null);
   const iframe = useRef(null);
   const ready = Boolean(previewCss && config && frame);
