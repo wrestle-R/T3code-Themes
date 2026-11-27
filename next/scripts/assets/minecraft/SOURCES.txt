@@ -7,8 +7,8 @@ resource_pack/textures/entity, and resource_pack/textures/blocks.
 See LICENSE.txt for Mojang's terms. Minecraft is a trademark of Mojang.
 This independent theme is not an official Minecraft product.
 
-The active theme builds original pixel sprites and a deepslate tile with Pillow.
-Legacy vanilla assets are separate from the exported theme.
+Minecraft builds original pixel sprites and a deepslate tile with Pillow.
+Minecraft Retro uses the vanilla assets.
 
 Desktop theme runtime
 The installed T3 Code theme schema accepts palette roles, CSS, and an optional
@@ -26,4 +26,5 @@ picker's accessible label independently selects the enchantment. An absent
 or unrecognized effort detail leaves the weapon unenchanted.
 
 Rebuild from next/:
-uv run --with pillow python scripts/build-minecraft.py
+uv run --with pillow python scripts/build-minecraft-workbench.py
+uv run --with numpy --with pillow python scripts/build-minecraft.py

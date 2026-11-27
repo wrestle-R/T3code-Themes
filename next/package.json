@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "test:browser": "node tests/theme-studio.cjs",
-    "test:minecraft": "node tests/minecraft-routes.cjs"
+    "test:minecraft": "node tests/minecraft-routes.cjs && node tests/minecraft-workbench.cjs",
+    "test:contribution": "node tests/contribution.cjs",
+    "test:community": "node tests/community.cjs"
   },
   "engines": {
     "node": ">=20.9"

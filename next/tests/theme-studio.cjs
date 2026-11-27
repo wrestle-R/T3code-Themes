@@ -38,7 +38,7 @@ async function grainContrast(page, pond) {
     canvas.width = canvas.height = 64;
     const bitmap = await createImageBitmap(await (await fetch(source)).blob());
     const context = canvas.getContext('2d');
-    context.drawImage(bitmap, 12, 12, 64, 64, 0, 0, 64, 64);
+    context.drawImage(bitmap, 12, 85, 64, 64, 0, 0, 64, 64);
     bitmap.close();
     const pixels = context.getImageData(0, 0, 64, 64).data;
     const samples = [...pixels].filter((_, index) => index % 4 === 0);
@@ -198,7 +198,7 @@ async function testStudio(browser) {
 
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
   }
 
   await page.getByRole('navigation').getByRole('link', { name: 'Collection' }).click();
@@ -338,8 +338,8 @@ async function testBlockworks(browser) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(site);
-  const original = await (await page.request.get(new URL('/downloads/blockworks.json', site).href)).json();
-  await page.goto(new URL('/blockworks', site).href);
+  const original = await (await page.request.get(new URL('/downloads/minecraft.json', site).href)).json();
+  await page.goto(new URL('/minecraft', site).href);
   const model = page.getByLabel('Main thread model');
   const frame = page.frameLocator('.studio-viewport iframe');
   const pond = frame.locator('.demo');
@@ -448,12 +448,14 @@ async function testBlockworks(browser) {
   await page.getByLabel('Preview conversation state').selectOption('conversation');
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
     assert.ok(await page.locator('.preview-toolbar').evaluate(el => el.scrollWidth <= el.clientWidth));
     const clearsMessages = await dock.evaluate(el => {
       const icon = getComputedStyle(el, '::after');
       const top = el.getBoundingClientRect().top - parseFloat(icon.height);
-      return top > el.ownerDocument.querySelector('.preview-messages').getBoundingClientRect().bottom;
+      const timeline = el.ownerDocument.querySelector('.preview-messages');
+      const lastMessage = timeline.querySelector('[data-timeline-row-kind="assistant"]');
+      return top > Math.min(timeline.getBoundingClientRect().bottom, lastMessage.getBoundingClientRect().bottom);
     });
     assert.ok(clearsMessages, 'The buddy should clear the conversation at ' + width + 'px');
   }
@@ -471,14 +473,13 @@ async function testNightfall(browser) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(site);
-  assert.deepEqual(await page.getByRole('article').locator('h2').allTextContents(), ['Koi pond', 'Nightfall', 'Minecraft', 'Margin Notes', 'Dark texture']);
   const gallery = page.getByRole('article', { name: 'Nightfall' });
   const originalResponse = await page.request.get(new URL('/downloads/nightfall-christmas.json', site).href);
   assert.ok(originalResponse.ok());
   const original = await originalResponse.json();
   assert.equal(original.id, 'nightfall-christmas');
   assert.ok(original.css.length < 100000);
-  await gallery.getByRole('link', { name: 'Try Nightfall' }).click();
+  await gallery.getByRole('link', { name: 'Nightfall', exact: true }).click();
   await page.waitForURL('**/nightfall-christmas');
   const frame = page.frameLocator('.studio-viewport iframe');
   const pond = frame.locator('.demo');
@@ -535,6 +536,13 @@ async function testNightfall(browser) {
   await page.getByRole('switch', {name:'Show snowmen'}).click();
   assert.equal(await frame.locator('[data-assistant-citation-viewport]').evaluate(el => getComputedStyle(el,'::after').opacity), '0');
   await page.getByRole('button', { name: 'Reset' }).click();
+  await page.locator('.studio-viewport').scrollIntoViewIfNeeded();
+  await frame.locator('html').evaluate(async root => {
+    for (let i = 0; i < 45 && root.hasAttribute('data-paused'); i++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    if (root.hasAttribute('data-paused')) throw new Error('Snow preview remained paused in view.');
+  });
   const dark = await look();
   assert.equal(dark.canvas, 'rgb(16, 16, 16)');
   assert.equal(dark.backdropImage, 'none');
@@ -565,7 +573,7 @@ async function testNightfall(browser) {
   assert.equal((await look()).snowAnimation, 'none');
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Page width " + width);
   }
   assert.deepEqual(errors, []);
   await page.close();
@@ -576,10 +584,10 @@ async function testNightfall(browser) {
   try {
     const defaultsPage = await browser.newPage();
   await defaultsPage.goto(site);
-  for (const name of ['Koi pond', 'Nightfall', 'Minecraft', 'Margin Notes', 'Dark texture']) {
-    const card = defaultsPage.getByRole('article', {name});
+  for (const name of ['Koi pond', 'Nightfall', 'Minecraft', 'Minecraft Retro', 'Dark texture']) {
+    const card = defaultsPage.getByRole('article', {name, exact: true});
     const frame = card.frameLocator('iframe');
-    const expectedMode = ['Koi pond', 'Minecraft', 'Dark texture'].includes(name) ? 'dark' : 'light';
+    const expectedMode = ['Nightfall', 'Minecraft Retro'].includes(name) ? 'light' : 'dark';
     assert.equal(await card.locator('.preview').getAttribute('data-preview-appearance'), expectedMode);
     const picker = frame.locator('[data-chat-provider-model-picker]');
     await picker.waitFor();

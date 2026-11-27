@@ -69,12 +69,12 @@ h1 { margin: 0 0 12px; font-size: 15px; font-weight: 600; letter-spacing: -.02em
   .composer-tools { margin-top: 12px; }
 }
 
-[data-preview-scene="blockworks"][data-preview-conversation] .preview-messages { padding-top: 32px; }
-[data-preview-scene="blockworks"] .preview-messages [data-user-message-bubble] { background: var(--message); border-radius: 2px; }
-[data-preview-scene="blockworks"] .composer-tools { gap: 6px; flex-wrap: wrap; }
-[data-preview-scene="blockworks"] .composer-tools [data-chat-provider-model-picker] { margin-left: 0; }
-[data-preview-scene="blockworks"] .composer-tools .submit { margin-left: auto; }
-[data-preview-scene="blockworks"] .mob-select {
+[data-preview-scene="minecraft"][data-preview-conversation] .preview-messages { padding-top: 32px; }
+[data-preview-scene="minecraft"] .preview-messages [data-user-message-bubble] { background: var(--message); border-radius: 2px; }
+[data-preview-scene="minecraft"] .composer-tools { gap: 6px; flex-wrap: wrap; }
+[data-preview-scene="minecraft"] .composer-tools [data-chat-provider-model-picker] { margin-left: 0; }
+[data-preview-scene="minecraft"] .composer-tools .submit { margin-left: auto; }
+[data-preview-scene="minecraft"] .mob-select {
   pointer-events: auto;
   min-height: 30px;
   max-width: 100%;
@@ -84,42 +84,57 @@ h1 { margin: 0 0 12px; font-size: 15px; font-weight: 600; letter-spacing: -.02em
   color: var(--text);
   font: inherit;
 }
-[data-preview-scene="blockworks"] .mob-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-[data-preview-scene="blockworks"] .checkout { justify-content: flex-start; }
-[data-preview-scene="blockworks"] .preview-branch { display: inline-flex; align-items: center; gap: 4px; padding-inline: 4px; }
-[data-preview-scene="blockworks"] .checkout .diff-counts { display: flex; margin-left: auto; gap: 6px; }
-[data-preview-scene="blockworks"] .checkout [data-mc-preview-status] { color: var(--mc-indicator-ink); }
-[data-preview-scene="blockworks"] .preview-rail { display: none; }
-:root[data-paused] [data-preview-scene="blockworks"] .preview-thread-card { animation-play-state: paused !important; }
-
-@media (min-width: 540px) {
-  [data-preview-scene="blockworks"]:has(.preview-rail) { --preview-rail-width: 132px; }
-  [data-preview-scene="blockworks"] .preview-rail {
-    display: block;
-    position: absolute;
-    inset: 0 auto 0 0;
-    z-index: 1;
-    width: var(--preview-rail-width);
-    padding: 16px 8px;
-    color: var(--muted);
-    font-size: 12px;
-  }
-  [data-preview-scene="blockworks"] .preview-thread-card {
-    display: grid;
-    gap: 4px;
-    margin-top: 8px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    color: var(--text);
-  }
-  [data-preview-scene="blockworks"]:has(.preview-rail) .demo {
-    width: calc(100% - var(--preview-rail-width));
-    margin-inline-start: var(--preview-rail-width);
-  }
-  [data-preview-scene="blockworks"]:has(.preview-rail) .preview-composer { inset-inline-start: var(--preview-rail-width); }
-}
+[data-preview-scene="minecraft"] .mob-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-preview-scene="minecraft"] .checkout { justify-content: flex-start; }
+[data-preview-scene="minecraft"] .preview-branch { display: inline-flex; align-items: center; gap: 4px; padding-inline: 4px; }
+[data-preview-scene="minecraft"] .checkout .diff-counts { display: flex; margin-left: auto; gap: 6px; }
+[data-preview-scene="minecraft"] .checkout [data-mc-preview-status] { color: var(--mc-indicator-ink); }
+:root[data-paused] .preview-thread-card { animation-play-state: paused !important; }
 
 @media (max-width: 480px) {
-  [data-preview-scene="blockworks"] :is(.new-thread, .preview-messages) { width: calc(100% - 32px); }
+  [data-preview-scene="minecraft"] :is(.new-thread, .preview-messages) { width: calc(100% - 32px); }
+}
+
+:root[data-paused] #preview-root *, :root[data-paused] #preview-root *::before, :root[data-paused] #preview-root *::after {
+  animation-play-state: paused !important;
+}
+.preview-shell { display: grid; grid-template-columns: clamp(134px, 21vw, 235px) minmax(0, 1fr); width: 100%; }
+.preview-rail {
+  position: relative; z-index: 1; padding: 16px 12px; border-right: 1px solid var(--sidebar-border, var(--border));
+  background: var(--sidebar, var(--composer)); color: var(--sidebar-muted, var(--muted)); font-size: 12px;
+}
+.preview-app { display: flex; align-items: center; gap: 8px; margin: 0 5px 28px; color: var(--sidebar-ink, var(--text)); }
+.preview-thread-card { display: grid; gap: 4px; margin-block: 8px; padding: 9px; border-radius: 5px; background: var(--sidebar-active, var(--border)); color: var(--sidebar-ink, var(--text)); }
+.sample-threads { display: grid; gap: 12px; padding: 8px; }
+.preview-topline {
+  position: absolute; z-index: 1; top: 0; left: 0; right: 0; height: 45px; display: flex; align-items: center; gap: 9px;
+  color: var(--chrome-ink, var(--muted)); background: var(--chrome, var(--composer)); border-bottom: 1px solid var(--chrome-border, var(--border)); padding: 0 14px; font-size: 12px;
+}
+.preview-topline strong { color: var(--chrome-ink, var(--text)); }
+.preview-shell .new-thread { width: min(78%, 640px); }
+.preview-shell h1 { font-size: clamp(19px, 3.4vw, 34px); margin-bottom: 18px; font-weight: 540; }
+.preview-shell .composer { min-height: 105px; padding: 16px; }
+.preview-shell .preview-messages { width: min(78%, 640px); padding: 66px 0 12px; height: calc(100% - 148px); overflow: auto; font-size: 14px; }
+.preview-shell .preview-messages [data-user-message-bubble] { width: fit-content; margin: 0 0 20px auto; background: var(--message, var(--composer)); color: var(--message-ink, var(--text)); }
+.preview-shell .preview-messages li { margin-block: 6px; }
+.preview-shell [data-preview-scene="minecraft"] .preview-messages { height: calc(100% - 225px); padding-top: 58px; }
+.preview-shell .preview-messages:focus-visible { outline: 1px solid var(--accent, var(--muted)); outline-offset: -2px; }
+.preview-shell .submit { background: var(--accent, var(--border)); color: var(--accent-ink, var(--text)); }
+.preview-details { display: none; }
+.preview-shell [data-preview-conversation] .studio-group { top: auto; bottom: 145px; z-index: 1; }
+[data-preview-scene="minecraft-retro"] { --mc-content-width: 640px; }
+[data-preview-scene="minecraft-retro"] .studio-group { top: 53px; bottom: auto; }
+@media (min-width: 1080px) {
+  .preview-details { display: grid; gap: 8px; position: absolute; z-index: 2; top: 58px; right: 12px; padding: 11px; min-width: 135px; background: var(--overlay, var(--composer)); border: 1px solid var(--border); border-radius: 7px; color: var(--muted); font-size: 12px; }
+  .preview-details span { display: flex; align-items: center; gap: 6px; }
+  .preview-details strong { color: var(--text); }
+  .preview-shell:has(.preview-details) .preview-messages { width: min(62%, 640px); }
+}
+@media (max-width: 540px) {
+  .preview-shell { grid-template-columns: 43px minmax(0, 1fr); }
+  .preview-rail { padding-inline: 7px; }
+  .preview-rail :is(.sample-threads, [data-sidebar-row], .preview-app strong) { display: none; }
+  .preview-shell :is(.new-thread, .preview-messages) { width: calc(100% - 25px); }
+  .preview-shell .composer { padding: 9px; }
+  .preview-shell .composer-tools { gap: 5px; }
 }

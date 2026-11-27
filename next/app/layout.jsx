@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata = {
   title: { default: 'Themes for T3 Code', template: '%s · T3 Code themes' },
-  description: 'Preview and download Nightfall for T3 Code.',
+  description: 'Browse, customize, and download animated and static themes for T3 Code.',
   icons: { icon: '/assets/mark.svg' },
 };
 
