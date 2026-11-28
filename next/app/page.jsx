@@ -4,7 +4,7 @@ import { getCatalog } from './lib/catalog';
 import { ThemeGallery } from './components/theme-gallery';
 
 export default async function Collection() {
-  const catalog = await getCatalog();
+  const catalog = (await getCatalog()).filter(theme => theme.listed !== false);
   return (
     <main id="main">
       <section id="themes" className="gallery wrap" aria-labelledby="gallery-title">
@@ -30,7 +30,7 @@ export default async function Collection() {
 
       <section id="about" className="about wrap" aria-labelledby="about-title">
         <h2 id="about-title">Share a theme</h2>
-        <p>Made a theme you’d like to share? <Link href="/submit">Submit a theme</Link> with a GitHub link or a pull request.</p>
+        <p>Made a theme you’d like to share? <Link href="/submit">Submit your theme JSON</Link> for review.</p>
       </section>
     </main>
   );

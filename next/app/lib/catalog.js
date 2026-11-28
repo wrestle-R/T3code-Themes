@@ -14,7 +14,7 @@ export async function communityTheme(slug) {
       config: theme,
       entry: {
         slug, name: theme.name, description, studioDescription: description, appearance: theme.appearance,
-        tags, author: author.name, github: 'https://github.com/' + author.github, website: author.website || '',
+        tags, author: author.name, github: 'https://github.com/' + author.github, githubId: author.githubId, website: author.website || '',
         defaults: {}, download: '/api/theme-files/' + slug,
       },
     };

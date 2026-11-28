@@ -1,6 +1,6 @@
 # Contributing a theme
 
-Use the [submission form](https://t3code-themes.vercel.app/submit) to prepare a GitHub issue with a link to your theme. Post the issue on GitHub to send it for review. For a direct contribution, fork the repository and open a pull request that adds one file at `next/community/<slug>.json`.
+Sign in with GitHub and paste or drop your T3 Code theme JSON into the [submission form](https://t3code-themes.vercel.app/submit). The form validates the theme and adds the metadata below. Authorize public repository access when prompted so the gallery can open the pull request from your GitHub account. To submit manually, fork the repository and open a pull request that adds one file at `next/community/<slug>.json`.
 
 I started this gallery because I wanted something a bit more animated in T3 Code. I’d love to see themes with some motion, even if it’s just a small detail. Plain color-only themes are discouraged. If your theme has animated characters, I’d prefer a different character, look, or movement for each agent so I can tell them apart at a glance. Koi Pond, for example, gives Claude, OpenAI, Gemini, and OpenCode their own fish.
 
@@ -41,10 +41,10 @@ From `next/`, run `npm ci`, `npx playwright install chromium`, and `npm run buil
 - For a submission, run `CONTRIBUTION_SLUG=plum-workspace npm run test:contribution`. It checks the public gallery and studio downloads in Chromium.
 - For app changes, run `npm run test:community`, `npm run test:browser`, and `npm run test:minecraft`.
 - For the local community test, set `NEXTAUTH_URL=http://localhost:3000` and set `NEXTAUTH_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` to test-only values. Use the same environment for the server and the test runner. The test intercepts the GitHub redirect and uses a signed test session.
-- Fork PRs use the **Theme submission** GitHub Actions job. It checks one added JSON package and runs the production download test with the base branch’s app. Maintainer branches run **App and theme behavior**.
+- Submission PRs use the **Theme submission** GitHub Actions job. It checks one added JSON package and runs the production download test with the base branch’s app. Other maintainer branches run **App and theme behavior**.
 
 ## Deployment
 
 The Vercel configuration enables automatic Git deployments on `main`. PR validation runs in GitHub Actions. If repository rules are enabled, use the applicable GitHub Actions job for PR validation.
 
-Shared likes and download counts on Vercel use a Redis REST endpoint configured with `KV_REST_API_URL` and `KV_REST_API_TOKEN`. Local runs without Redis use an ignored file under `next/local-docs/`. Like counts are per browser, and download counts represent download requests made through the gallery or editor.
+Shared likes and download counts on Vercel use a Redis REST endpoint configured with `KV_REST_API_URL` and `KV_REST_API_TOKEN`. Local runs without Redis use an ignored file under `next/local-docs/`. Signed-in likes are tracked by GitHub account and download counts represent requests made through the gallery or editor.

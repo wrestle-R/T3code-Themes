@@ -1,5 +1,7 @@
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 export const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const githubLoginPattern = /^[a-z\d](?:[a-z\d-]{0,38})$/i;
+export const submissionMaxBytes = 250_000;
 
 function text(value, max) {
   return typeof value === 'string' && value.trim() === value && value.length > 0 && value.length <= max;
@@ -32,8 +34,11 @@ export function validateSubmission(submission, slug) {
   if (!object(submission) || !text(slug, 64) || !slugPattern.test(slug)) throw new Error('Use a lowercase theme slug.');
   const { author, description, tags, theme } = submission;
   if (!text(description, 180)) throw new Error('Add a description of up to 180 characters.');
-  if (!object(author) || !text(author.name, 80) || !/^[a-z\d](?:[a-z\d-]{0,38})$/i.test(author.github || '')) {
+  if (!object(author) || !text(author.name, 80) || !githubLoginPattern.test(author.github || '')) {
     throw new Error('Add an author name and GitHub username.');
+  }
+  if (author.githubId !== undefined && (typeof author.githubId !== 'string' || !/^\d{1,20}$/.test(author.githubId))) {
+    throw new Error('Use a valid GitHub account ID.');
   }
   if (author.website && (!text(author.website, 200) || !URL.canParse(author.website) || !['https:', 'http:'].includes(new URL(author.website).protocol))) {
     throw new Error('Use an HTTP or HTTPS author website.');
@@ -50,4 +55,25 @@ export function validateSubmission(submission, slug) {
   return { author, description, tags, theme: config };
 }
 
-export const reservedSlugs = new Set(['api', 'submit', 'blockworks', 'margin-notes', 'koi-pond', 'minecraft', 'minecraft-retro', 'dark-texture', 'nightfall-christmas']);
+export const reservedSlugs = new Set(['api', 'submit', 'my-themes', 'blockworks', 'margin-notes', 'koi-pond', 'minecraft', 'minecraft-retro', 'dark-texture', 'nightfall-christmas']);
+
+export function prepareThemePackage(fields, author) {
+  if (!object(fields) || typeof fields.source !== 'string') throw new Error('Paste or drop a T3 Code theme JSON file.');
+  let theme;
+  try {
+    theme = JSON.parse(fields.source);
+  } catch {
+    throw new Error('The theme file is not valid JSON.');
+  }
+  const slug = theme?.id;
+  if (reservedSlugs.has(slug)) throw new Error('That theme ID is already in use. Choose a new ID in your JSON.');
+  const packageData = validateSubmission({
+    author: { ...author, ...(fields.website && { website: fields.website }) },
+    description: fields.description,
+    tags: fields.tags,
+    theme,
+  }, slug);
+  const content = JSON.stringify(packageData, null, 2) + '\n';
+  if (new TextEncoder().encode(content).length > submissionMaxBytes) throw new Error('Theme packages must fit within 250 KB.');
+  return { slug, name: packageData.theme.name, content };
+}

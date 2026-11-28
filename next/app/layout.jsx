@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { SiteNavigation } from './components/site-controls';
 import { PreviewStylesProvider } from './components/preview-styles';
-import { russelGithub } from './themes';
+import { githubSignInAvailable } from './lib/github-auth';
 import './globals.css';
 
 export const metadata = {
@@ -31,11 +31,11 @@ export default async function RootLayout({ children }) {
             <Image src="/assets/mark.svg" width={26} height={26} alt="" unoptimized />
             <span>T3 Code themes</span>
           </Link>
-          <SiteNavigation />
+          <SiteNavigation githubSignInAvailable={githubSignInAvailable} />
         </header>
         <PreviewStylesProvider css={previewCss}>{children}</PreviewStylesProvider>
         <footer className="site-footer wrap">
-          <p>Made by <a className="text-link" href={russelGithub}>Russel</a></p>
+          <p>Made by <a className="text-link" href="https://russel.is-a.dev">Russel</a></p>
           <a className="text-link" href="https://github.com/wrestle-R/T3code-Themes">Source on GitHub <span aria-hidden="true">↗</span></a>
         </footer>
       </body>

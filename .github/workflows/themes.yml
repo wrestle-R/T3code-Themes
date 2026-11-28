@@ -12,7 +12,7 @@ permissions:
 jobs:
   submission:
     name: Theme submission
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || startsWith(github.head_ref, 'theme-submission/'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,8 +51,13 @@ jobs:
 
   app:
     name: App and theme behavior
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'theme-submission/'))
     runs-on: ubuntu-latest
+    env:
+      GITHUB_CLIENT_ID: local-test-client
+      GITHUB_CLIENT_SECRET: local-test-secret
+      NEXTAUTH_SECRET: local-only-theme-gallery-test-secret
+      NEXTAUTH_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,11 +72,6 @@ jobs:
       - working-directory: next
         run: npm run build
       - working-directory: next
-        env:
-          GITHUB_CLIENT_ID: local-test-client
-          GITHUB_CLIENT_SECRET: local-test-secret
-          NEXTAUTH_SECRET: local-only-theme-gallery-test-secret
-          NEXTAUTH_URL: http://localhost:3000
         run: |
           npm run start -- --port 3000 &
           npm run test:community

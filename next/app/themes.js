@@ -56,6 +56,7 @@ export const themes = {
   },
   'dark-texture': {
     name: 'Dark texture',
+    listed: false,
     description: 'A fine charcoal grain in dark mode and the same texture on a light gray background.',
     studioDescription: 'Choose a background for each appearance and set how much grain shows through.',
     download: '/downloads/dark-texture.json',

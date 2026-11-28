@@ -600,7 +600,8 @@ async function testNightfall(browser) {
   try {
     const defaultsPage = await browser.newPage();
   await defaultsPage.goto(site);
-  for (const name of ['Koi pond', 'Nightfall', 'Minecraft', 'Minecraft Retro', 'Dark texture']) {
+  assert.equal(await defaultsPage.getByRole('article', { name: 'Dark texture', exact: true }).count(), 0);
+  for (const name of ['Koi pond', 'Nightfall', 'Minecraft', 'Minecraft Retro']) {
     const card = defaultsPage.getByRole('article', {name, exact: true});
     const frame = card.frameLocator('iframe');
     const expectedMode = ['Nightfall', 'Minecraft Retro'].includes(name) ? 'light' : 'dark';

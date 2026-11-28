@@ -4,13 +4,15 @@ const { encode } = require('next-auth/jwt');
 const { chromium, firefox } = require('playwright');
 const { site, waitForApp } = require('./test-server.cjs');
 
-async function signInAsTestUser(page) {
+async function signInAsTestUser(page, githubId = '900000001', canSubmit = false) {
   const secret = process.env.NEXTAUTH_SECRET;
   assert.ok(secret, 'Set the local test auth environment described in CONTRIBUTING.md.');
   const secure = new URL(site).protocol === 'https:';
   await page.context().addCookies([{
     name: (secure ? '__Secure-' : '') + 'next-auth.session-token',
-    value: await encode({ secret, token: { githubId: '900000001' } }),
+    value: await encode({ secret, token: {
+      githubId, ...(canSubmit && { submissionToken: 'test-public-repo-token', submissionExpires: Date.now() + 60_000 }),
+    } }),
     url: site,
     httpOnly: true,
     secure,
@@ -33,7 +35,7 @@ async function main() {
       data: { slug: 'minecraft-retro', liked: true, githubId: '900000001' },
     });
     assert.equal(rejected.status(), 401);
-    const signIn = page.getByRole('button', { name: 'Sign in with GitHub to like themes' });
+    const signIn = page.getByRole('button', { name: 'Sign in with GitHub', exact: true });
     await signIn.waitFor();
     await page.route('https://github.com/login/oauth/authorize?**', route => route.fulfill({ body: 'GitHub OAuth screen' }));
     const authorization = page.waitForRequest(request => request.url().startsWith('https://github.com/login/oauth/authorize?'));
@@ -46,6 +48,8 @@ async function main() {
     await page.waitForURL(authorizeURL.href);
     await signInAsTestUser(page);
     await page.goto(site);
+    assert.equal(await page.getByRole('article', { name: 'Dark texture' }).count(), 0);
+    assert.equal(await page.getByRole('contentinfo').getByRole('link', { name: 'Russel' }).getAttribute('href'), 'https://russel.is-a.dev');
     assert.equal(await page.getByRole('heading', { name: 'Margin Notes' }).count(), 0);
     const retro = page.getByRole('article', { name: 'Minecraft Retro', exact: true });
     const minecraft = page.getByRole('article', { name: 'Minecraft', exact: true });
@@ -82,7 +86,7 @@ async function main() {
     await otherVisitor.goto(site);
     const otherLike = otherVisitor.getByRole('button', { name: 'Sign in with GitHub to like Minecraft Retro', exact: true });
     await retro.locator('button[aria-label="Like Minecraft Retro"]:enabled[aria-pressed="true"]').waitFor();
-    await otherLike.waitFor();
+    await otherLike.and(otherVisitor.locator('button:enabled')).waitFor();
     assert.equal((await otherLike.textContent()).trim(), String(Number(startingLikes) + 1));
     await signInAsTestUser(otherVisitor);
     await otherVisitor.reload();
@@ -94,6 +98,7 @@ async function main() {
     await retro.getByRole('button', { name: 'Like Minecraft Retro', pressed: false }).waitFor();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await signIn.waitFor();
+    assert.equal(await page.getByRole('navigation').getByRole('link', { name: 'My themes' }).count(), 0);
     await page.getByRole('searchbox', { name: 'Search themes' }).fill('minecraft');
     assert.equal(await page.getByRole('article').count(), 2);
     await page.getByLabel('Filter by tag').selectOption('Voxel');
@@ -151,31 +156,62 @@ async function main() {
     assert.ok((await page.locator('.studio-viewport').boundingBox()).width > editorWidth);
     await page.getByRole('button', { name: 'Customize', exact: true }).click();
     assert.equal((await page.locator('.studio-viewport').boundingBox()).width, editorWidth);
-    await page.route('**/api/github-profile?login=test-user', route => route.fulfill({
-      json: { name: 'Test Author', login: 'test-user', id: 123, website: 'https://example.org/' },
-    }));
+    const legacyAccounts = [
+      ['143933715', 'Virar Fast'],
+      ['160257872', 'Minecraft'],
+      ['107079652', 'Minecraft'],
+    ];
+    for (const [id, title] of legacyAccounts) {
+      const authorPage = await browser.newPage();
+      await signInAsTestUser(authorPage, id);
+      await authorPage.goto(site);
+      await authorPage.getByRole('navigation').getByRole('link', { name: 'My themes' }).click();
+      await authorPage.getByRole('heading', { name: 'My themes', exact: true }).waitFor();
+      await authorPage.getByRole('heading', { name: title, exact: true }).waitFor();
+      assert.equal(await authorPage.getByRole('article').count(), 1);
+      await authorPage.close();
+    }
+    await signInAsTestUser(page);
     await page.getByRole('navigation').getByRole('link', { name: 'Submit' }).click();
-    await page.getByLabel('Theme name', { exact: true }).fill('Plum');
-    await page.getByLabel('GitHub theme link').fill('https://github.com/test-user/plum/blob/main/plum.json');
+    const theme = JSON.stringify({ version: 1, id: 'plum-workspace', name: 'Plum workspace', appearance: 'dark', canvas: '#19151c', accent: '#dbacf6' });
+    const themeJSON = page.getByRole('textbox', { name: 'Theme JSON' });
+    const submit = page.getByRole('button', { name: 'Validate and open pull request' });
+    await themeJSON.fill('{');
     await page.getByLabel('Description').fill('A plum theme with a quieter sidebar.');
-    await page.getByText('GitHub profile filled in.', { exact: false }).waitFor();
-    assert.equal(await page.getByLabel('Author name').inputValue(), 'Test Author');
-    assert.equal(await page.getByLabel('GitHub ID').inputValue(), '123');
-    assert.equal(await page.getByLabel('Personal website', { exact: false }).inputValue(), 'https://example.org/');
-    await page.getByLabel('Tags', { exact: true }).fill('Dark, Dark');
-    await page.getByRole('button', { name: 'Prepare submission' }).click();
-    await page.getByRole('alert').getByText('Enter 1–5 unique tags', { exact: false }).waitFor();
     await page.getByLabel('Tags', { exact: true }).fill('Dark, Minimal');
-    await page.getByRole('button', { name: 'Prepare submission' }).click();
-    const issue = new URL(await page.getByRole('link', { name: 'Continue on GitHub' }).getAttribute('href'));
-    assert.equal(issue.pathname, '/wrestle-R/T3code-Themes/issues/new');
-    assert.match(issue.searchParams.get('body'), /Test Author[\s\S]*Dark, Minimal/);
-    assert.ok(await page.getByRole('link', { name: 'Open a pull request' }).isVisible());
+    await submit.click();
+    await page.getByRole('alert').getByText('The theme file is not valid JSON.').waitFor();
+    await page.getByLabel('Drop a JSON file here or choose one').setInputFiles({
+      name: 'plum-workspace.json', mimeType: 'application/json', buffer: Buffer.from(theme),
+    });
+    await page.getByLabel('Tags', { exact: true }).fill('Dark, Dark');
+    await submit.click();
+    await page.getByRole('alert').getByText('Supply 1–5 unique tags', { exact: false }).waitFor();
+    await page.getByLabel('Tags', { exact: true }).fill('Dark, Minimal');
+    await submit.click();
+    const authorize = page.getByRole('button', { name: 'Authorize GitHub and submit' });
+    await authorize.waitFor();
+    await page.route('https://github.com/login/oauth/authorize?**', async route => {
+      await signInAsTestUser(page, '900000001', true);
+      await route.fulfill({ status: 302, headers: { location: new URL('/submit', site).href } });
+    });
+    const submitPath = '**/api/theme-submissions';
+    const pullRequest = 'https://github.com/wrestle-R/T3code-Themes/pull/123';
+    await page.route(submitPath, route => route.fulfill({ status: 201, json: { pullRequest } }));
+    await page.route(submitPath, route => route.fulfill({ status: 202, json: { error: 'Fork is preparing.' } }), { times: 1 });
+    const consent = page.waitForRequest(request => request.url().startsWith('https://github.com/login/oauth/authorize?'));
+    const submission = page.waitForRequest(request => request.url().endsWith('/api/theme-submissions'));
+    await authorize.click();
+    assert.equal(new URL((await consent).url()).searchParams.get('scope'), 'read:user public_repo');
+    assert.deepEqual((await submission).postDataJSON(), {
+      source: theme, tags: ['Dark', 'Minimal'], description: 'A plum theme with a quieter sidebar.', website: '',
+    });
+    assert.equal(await page.getByRole('link', { name: 'View pull request' }).getAttribute('href'), pullRequest);
 
     const studios = ['/koi-pond', '/dark-texture', '/nightfall-christmas', '/minecraft', '/minecraft-retro'];
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      for (const path of ['/', ...studios, '/submit']) {
+      for (const path of ['/', ...studios, '/submit', '/my-themes']) {
         await page.goto(new URL(path, site).href);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), path + ' at ' + width + 'px');
         if (path === '/') {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowUpRight, Download, Heart, Search } from 'lucide-react';
-import { signIn, signOut } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { GalleryPreview } from './theme-preview';
 
@@ -34,8 +34,7 @@ export function ThemeGallery({ catalog }) {
     setBusy(true);
     setError('');
     try {
-      if (likesAuth === 'signed-in') await signOut({ callbackUrl: '/' });
-      else await signIn('github', { callbackUrl: '/' });
+      await signIn('github', { callbackUrl: '/' });
     } catch {
       setError('Could not connect to sign-in. Try again.');
       setBusy(false);
@@ -111,14 +110,7 @@ export function ThemeGallery({ catalog }) {
             {tags.map(value => <option key={value}>{value}</option>)}
           </select>
         </div>
-        <div className="gallery-account">
-          <p className="gallery-order">Most liked first</p>
-          {(likesAuth === 'sign-in' || likesAuth === 'signed-in') && (
-            <button className="gallery-session" type="button" disabled={busy} onClick={changeSession}>
-              {likesAuth === 'signed-in' ? 'Sign out' : 'Sign in with GitHub to like themes'}
-            </button>
-          )}
-        </div>
+        <p className="gallery-order">Most liked first</p>
       </div>
       {error && <p role="status" className="gallery-error">{error}</p>}
       {!visible.length && <p className="gallery-error">No themes match. Try another search or tag.</p>}
