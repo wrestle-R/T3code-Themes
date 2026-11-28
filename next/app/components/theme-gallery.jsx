@@ -28,17 +28,21 @@ export function ThemeGallery({ catalog }) {
   }, []);
 
   async function like(slug) {
+    const previous = stats[slug];
+    const liked = !previous.liked;
     setBusy(true);
     setError('');
+    setStats({ ...stats, [slug]: { ...previous, liked, likes: previous.likes + (liked ? 1 : -1) } });
     try {
       const response = await fetch('/api/theme-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, liked: !stats[slug]?.liked }),
+        body: JSON.stringify({ slug, liked }),
       });
       if (!response.ok) throw new Error();
       setStats(await response.json());
     } catch {
+      setStats(stats);
       setError('Could not save your like. Try again.');
     } finally {
       setBusy(false);
@@ -47,7 +51,11 @@ export function ThemeGallery({ catalog }) {
 
   async function download(event, slug) {
     event.preventDefault();
+    if (busy) return;
+    const previous = stats?.[slug];
+    setBusy(true);
     setError('');
+    if (previous) setStats({ ...stats, [slug]: { ...previous, downloads: previous.downloads + 1 } });
     try {
       const response = await fetch(event.currentTarget.href);
       if (!response.ok) throw new Error();
@@ -57,11 +65,15 @@ export function ThemeGallery({ catalog }) {
       link.download = slug + '.json';
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await refresh().catch(() => {
+        if (previous) setStats(stats);
+      });
     } catch {
+      if (previous) setStats(stats);
       setError('Could not download the theme. Try again.');
-      return;
+    } finally {
+      setBusy(false);
     }
-    if (stats && !busy) await refresh().catch(() => {});
   }
 
   return (
@@ -105,7 +117,8 @@ export function ThemeGallery({ catalog }) {
                   disabled={!counts} aria-disabled={busy || undefined} onClick={() => { if (!busy) like(slug); }}>
                   <Heart size={16} fill={counts?.liked ? 'currentColor' : 'none'} aria-hidden="true" /> {counts?.likes ?? '–'}
                 </button>
-                <a href={'/api/theme-download/' + slug} download onClick={event => download(event, slug)} aria-label={'Download ' + theme.name + ' JSON'}>
+                <a href={'/api/theme-download/' + slug} download onClick={event => download(event, slug)}
+                  aria-disabled={busy || undefined} aria-label={'Download ' + theme.name + ' JSON'}>
                   <Download size={16} aria-hidden="true" /> <span>Download</span><span className="download-count">{counts?.downloads ?? '–'}</span>
                 </a>
               </div>

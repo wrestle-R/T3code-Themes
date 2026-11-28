@@ -7,10 +7,18 @@ const store = join(directory, 'theme-stats.json');
 const prefix = '{t3code-themes}:v1:';
 const localQueue = Symbol.for('t3code-themes.local-statistics-queue');
 
-async function redis(command) {
-  const response = await fetch(process.env.KV_REST_API_URL, {
+function redisCredentials() {
+  const { KV_REST_API_URL, KV_REST_API_TOKEN, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, VERCEL } = process.env;
+  if (KV_REST_API_URL && KV_REST_API_TOKEN) return { url: KV_REST_API_URL, token: KV_REST_API_TOKEN };
+  if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) return { url: UPSTASH_REDIS_REST_URL, token: UPSTASH_REDIS_REST_TOKEN };
+  if (VERCEL) throw new Error('Connect Upstash Redis to the Vercel project');
+  return null;
+}
+
+async function redis({ url, token }, command) {
+  const response = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: 'Bearer ' + process.env.KV_REST_API_TOKEN, 'Content-Type': 'application/json' },
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify(command),
     cache: 'no-store',
     signal: AbortSignal.timeout(2500),
@@ -39,15 +47,15 @@ function local(operation) {
   return pending;
 }
 
-function useRedis() {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) return true;
-  if (process.env.VERCEL) throw new Error('Configure KV_REST_API_URL and KV_REST_API_TOKEN');
-  return false;
+function withStartingCounts(slug, likes, downloads, liked) {
+  const startingCount = slug === 'koi-pond' ? 7 : 1;
+  return { likes: startingCount + likes, downloads: startingCount + downloads, liked };
 }
 
 export async function readThemeStats(slugs, visitor) {
-  if (useRedis()) {
-    const values = await redis(['EVAL', `
+  const credentials = redisCredentials();
+  if (credentials) {
+    const values = await redis(credentials, ['EVAL', `
       local values = {}
       for index = 1, #KEYS, 2 do
         table.insert(values, redis.call('SCARD', KEYS[index]))
@@ -56,18 +64,19 @@ export async function readThemeStats(slugs, visitor) {
       end
       return values
     `, slugs.length * 2, ...slugs.flatMap(slug => [prefix + slug + ':likes', prefix + slug + ':downloads']), visitor]);
-    return Object.fromEntries(slugs.map((slug, index) => [slug, {
-      likes: values[index * 3], downloads: values[index * 3 + 1], liked: Boolean(values[index * 3 + 2]),
-    }]));
+    return Object.fromEntries(slugs.map((slug, index) => [
+      slug, withStartingCounts(slug, values[index * 3], values[index * 3 + 1], Boolean(values[index * 3 + 2])),
+    ]));
   }
   return local(stats => Object.fromEntries(slugs.map(slug => {
     const item = stats[slug];
-    return [slug, { likes: item?.likes.length || 0, downloads: item?.downloads || 0, liked: item?.likes.includes(visitor) || false }];
+    return [slug, withStartingCounts(slug, item?.likes.length ?? 0, item?.downloads ?? 0, item?.likes.includes(visitor) ?? false)];
   })));
 }
 
 export async function setThemeLike(slug, visitor, liked) {
-  if (useRedis()) return redis([liked ? 'SADD' : 'SREM', prefix + slug + ':likes', visitor]);
+  const credentials = redisCredentials();
+  if (credentials) return redis(credentials, [liked ? 'SADD' : 'SREM', prefix + slug + ':likes', visitor]);
   return local(stats => {
     const item = stats[slug] ??= { likes: [], downloads: 0 };
     item.likes = liked ? [...new Set([...item.likes, visitor])] : item.likes.filter(id => id !== visitor);
@@ -75,7 +84,8 @@ export async function setThemeLike(slug, visitor, liked) {
 }
 
 export async function countThemeDownload(slug) {
-  if (useRedis()) return redis(['INCR', prefix + slug + ':downloads']);
+  const credentials = redisCredentials();
+  if (credentials) return redis(credentials, ['INCR', prefix + slug + ':downloads']);
   return local(stats => {
     const item = stats[slug] ??= { likes: [], downloads: 0 };
     item.downloads++;

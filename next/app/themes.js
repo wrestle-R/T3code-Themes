@@ -1,4 +1,5 @@
 export const pondProviders = ['Claude', 'OpenAI', 'Gemini', 'OpenCode'];
+export const russelGithub = 'https://github.com/wrestle-R';
 
 export const minecraftMobs = {
   openai: 'Iron golem',
@@ -76,6 +77,7 @@ export const builtInThemes = galleryOrder.map((slug, index) => ({
   slug,
   ...themes[slug],
   author: themes[slug].author || 'Russel',
+  github: themes[slug].github || russelGithub,
   tags: tags[slug],
   galleryAppearance: index % 2 === 0 ? 'dark' : 'light',
 }));

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { SiteNavigation } from './components/site-controls';
 import { PreviewStylesProvider } from './components/preview-styles';
+import { russelGithub } from './themes';
 import './globals.css';
 
 export const metadata = {
@@ -34,7 +35,7 @@ export default async function RootLayout({ children }) {
         </header>
         <PreviewStylesProvider css={previewCss}>{children}</PreviewStylesProvider>
         <footer className="site-footer wrap">
-          <p>Made by Russel</p>
+          <p>Made by <a className="text-link" href={russelGithub}>Russel</a></p>
           <a className="text-link" href="https://github.com/wrestle-R/T3code-Themes">Source on GitHub <span aria-hidden="true">↗</span></a>
         </footer>
       </body>
