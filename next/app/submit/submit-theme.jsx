@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { prepareThemePackage, submissionMaxBytes } from '../lib/theme-format.mjs';
 
 const contributor = { name: 'Contributor', github: 'contributor' };
-const empty = { source: '', description: '', tags: '', website: '' };
+const empty = { sourceMode: 'paste', source: '', fileSource: '', fileName: '', description: '', tags: '', website: '' };
 
 export function SubmitTheme({ session }) {
   const [draft, setDraft] = useState(empty);
@@ -21,8 +21,9 @@ export function SubmitTheme({ session }) {
     try {
       const saved = sessionStorage.getItem(draftKey);
       if (!saved) return;
-      const { resume, ...restored } = JSON.parse(saved);
-      setDraft({ ...empty, ...restored });
+      const { resume, ...previous } = JSON.parse(saved);
+      const restored = { ...empty, ...previous };
+      setDraft(restored);
       if (resume && session.canSubmit) {
         sessionStorage.setItem(draftKey, JSON.stringify(restored));
         submitDraft(restored);
@@ -32,8 +33,8 @@ export function SubmitTheme({ session }) {
     }
   }, [draftKey, session?.canSubmit]);
 
-  function update(field, value) {
-    setDraft(current => ({ ...current, [field]: value }));
+  function update(fields) {
+    setDraft(current => ({ ...current, ...fields }));
     setError('');
     setPullRequest('');
     setPermissionRequired(false);
@@ -46,7 +47,7 @@ export function SubmitTheme({ session }) {
       return;
     }
     try {
-      update('source', await file.text());
+      update({ fileSource: await file.text(), fileName: file.name });
     } catch {
       setError('Could not read the file. Try pasting the JSON.');
     }
@@ -68,11 +69,15 @@ export function SubmitTheme({ session }) {
     setError('');
     setPermissionRequired(false);
     const fields = {
-      source: current.source,
+      source: current.sourceMode === 'upload' ? current.fileSource : current.source,
       description: current.description.trim(),
       tags: current.tags.split(',').map(tag => tag.trim()).filter(Boolean),
       website: current.website.trim(),
     };
+    if (!fields.source.trim()) {
+      setError(current.sourceMode === 'upload' ? 'Choose or drop a JSON file.' : 'Paste your theme JSON.');
+      return;
+    }
     try {
       prepareThemePackage(fields, contributor);
     } catch (validation) {
@@ -118,28 +123,38 @@ export function SubmitTheme({ session }) {
         event.preventDefault();
         submitDraft(draft);
       }}>
-        <div className="submit-source" onDragOver={event => event.preventDefault()} onDrop={event => {
-          event.preventDefault();
-          if (event.dataTransfer.files.length) loadFile(event.dataTransfer.files[0]);
-        }}>
-          <label>Theme JSON
-            <textarea name="source" rows={8} required spellCheck={false} placeholder="Paste your T3 Code theme JSON here"
-              value={draft.source} onChange={event => update('source', event.target.value)} />
-          </label>
-          <label className="submit-file">Drop a JSON file here or choose one
-            <input type="file" accept=".json,application/json" onChange={event => {
-              loadFile(event.target.files[0]);
-              event.target.value = '';
-            }} />
-          </label>
-        </div>
+        <fieldset className="submit-source">
+          <legend>Theme JSON</legend>
+          <div className="submit-source-options">
+            <button type="button" aria-pressed={draft.sourceMode === 'paste'} onClick={() => update({ sourceMode: 'paste' })}>Paste JSON</button>
+            <button type="button" aria-pressed={draft.sourceMode === 'upload'} onClick={() => update({ sourceMode: 'upload' })}>Upload file</button>
+          </div>
+          {draft.sourceMode === 'paste' ? (
+            <textarea aria-label="Theme JSON" name="source" rows={8} required spellCheck={false} placeholder="Paste your T3 Code theme JSON here"
+              value={draft.source} onChange={event => update({ source: event.target.value })} />
+          ) : (
+            <div className="submit-drop" onDragOver={event => event.preventDefault()} onDrop={event => {
+              event.preventDefault();
+              loadFile(event.dataTransfer.files[0]);
+            }}>
+              <label className="open-theme">
+                Choose JSON file
+                <input className="sr-only" type="file" accept=".json,application/json" onChange={event => {
+                  loadFile(event.target.files[0]);
+                  event.target.value = '';
+                }} />
+              </label>
+              <span role="status">{draft.fileName || 'or drop it here'}</span>
+            </div>
+          )}
+        </fieldset>
         <label>Description<textarea name="description" rows={3} required maxLength={180}
-          value={draft.description} onChange={event => update('description', event.target.value)} /></label>
+          value={draft.description} onChange={event => update({ description: event.target.value })} /></label>
         <label>Tags<input name="tags" required maxLength={130} placeholder="Animated, Pixel art"
-          value={draft.tags} onChange={event => update('tags', event.target.value)} /></label>
+          value={draft.tags} onChange={event => update({ tags: event.target.value })} /></label>
         <label><span>Personal website <small>(optional)</small></span>
           <input name="website" type="url" maxLength={200} value={draft.website}
-            onChange={event => update('website', event.target.value)} />
+            onChange={event => update({ website: event.target.value })} />
         </label>
         {error && <p role="alert">{error}</p>}
         {permissionRequired && (

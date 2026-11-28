@@ -28,6 +28,13 @@ async function main() {
     const page = await browser.newPage();
     // Reproduce the production report where an iframe stylesheet failed to load.
     await page.route('**/preview.css', route => route.abort());
+    await page.goto(new URL('/submit', site).href);
+    const layout = await page.evaluate(() => {
+      const header = document.querySelector('.site-header').getBoundingClientRect();
+      const footer = document.querySelector('.site-footer').getBoundingClientRect();
+      return { top: header.top, bottomGap: innerHeight - footer.bottom, leftGap: footer.left - header.left, rightGap: footer.right - header.right };
+    });
+    assert.deepEqual(layout, { top: 0, bottomGap: 0, leftGap: 0, rightGap: 0 });
     await page.goto(site);
     const statsURL = new URL('/api/theme-stats', site);
     const rejected = await page.request.post(statsURL.href, {
@@ -181,7 +188,14 @@ async function main() {
     await page.getByLabel('Tags', { exact: true }).fill('Dark, Minimal');
     await submit.click();
     await page.getByRole('alert').getByText('The theme file is not valid JSON.').waitFor();
-    await page.getByLabel('Drop a JSON file here or choose one').setInputFiles({
+    await themeJSON.fill(theme);
+    await submit.click();
+    await page.getByRole('button', { name: 'Authorize GitHub and submit' }).waitFor();
+    await page.getByRole('button', { name: 'Upload file', exact: true }).click();
+    assert.equal(await themeJSON.count(), 0);
+    await submit.click();
+    await page.getByRole('alert').getByText('Choose or drop a JSON file.').waitFor();
+    await page.getByLabel('Choose JSON file', { exact: true }).setInputFiles({
       name: 'plum-workspace.json', mimeType: 'application/json', buffer: Buffer.from(theme),
     });
     await page.getByLabel('Tags', { exact: true }).fill('Dark, Dark');
@@ -206,6 +220,8 @@ async function main() {
     assert.deepEqual((await submission).postDataJSON(), {
       source: theme, tags: ['Dark', 'Minimal'], description: 'A plum theme with a quieter sidebar.', website: '',
     });
+    assert.equal(await themeJSON.count(), 0);
+    await page.getByRole('status').getByText('plum-workspace.json').waitFor();
     assert.equal(await page.getByRole('link', { name: 'View pull request' }).getAttribute('href'), pullRequest);
 
     const studios = ['/koi-pond', '/dark-texture', '/nightfall-christmas', '/minecraft', '/minecraft-retro'];
