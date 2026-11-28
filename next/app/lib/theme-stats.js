@@ -60,17 +60,17 @@ export async function readThemeStats(slugs, visitor) {
       for index = 1, #KEYS, 2 do
         table.insert(values, redis.call('SCARD', KEYS[index]))
         table.insert(values, tonumber(redis.call('GET', KEYS[index+1])) or 0)
-        table.insert(values, redis.call('SISMEMBER', KEYS[index], ARGV[1]))
+        table.insert(values, ARGV[1] ~= '' and redis.call('SISMEMBER', KEYS[index], ARGV[1]) or 0)
       end
       return values
-    `, slugs.length * 2, ...slugs.flatMap(slug => [prefix + slug + ':likes', prefix + slug + ':downloads']), visitor]);
+    `, slugs.length * 2, ...slugs.flatMap(slug => [prefix + slug + ':likes', prefix + slug + ':downloads']), visitor ?? '']);
     return Object.fromEntries(slugs.map((slug, index) => [
       slug, withStartingCounts(slug, values[index * 3], values[index * 3 + 1], Boolean(values[index * 3 + 2])),
     ]));
   }
   return local(stats => Object.fromEntries(slugs.map(slug => {
     const item = stats[slug];
-    return [slug, withStartingCounts(slug, item?.likes.length ?? 0, item?.downloads ?? 0, item?.likes.includes(visitor) ?? false)];
+    return [slug, withStartingCounts(slug, item?.likes.length ?? 0, item?.downloads ?? 0, Boolean(visitor && item?.likes.includes(visitor)))];
   })));
 }
 

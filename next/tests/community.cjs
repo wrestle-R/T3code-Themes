@@ -1,7 +1,21 @@
 const assert = require('node:assert/strict');
 const { readFile } = require('node:fs/promises');
+const { encode } = require('next-auth/jwt');
 const { chromium, firefox } = require('playwright');
 const { site, waitForApp } = require('./test-server.cjs');
+
+async function signInAsTestUser(page) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  assert.ok(secret, 'Set the local test auth environment described in CONTRIBUTING.md.');
+  const secure = new URL(site).protocol === 'https:';
+  await page.context().addCookies([{
+    name: (secure ? '__Secure-' : '') + 'next-auth.session-token',
+    value: await encode({ secret, token: { githubId: '900000001' } }),
+    url: site,
+    httpOnly: true,
+    secure,
+  }]);
+}
 
 async function main() {
   await waitForApp();
@@ -12,6 +26,25 @@ async function main() {
     const page = await browser.newPage();
     // Reproduce the production report where an iframe stylesheet failed to load.
     await page.route('**/preview.css', route => route.abort());
+    await page.goto(site);
+    const statsURL = new URL('/api/theme-stats', site);
+    const rejected = await page.request.post(statsURL.href, {
+      headers: { Origin: statsURL.origin, Cookie: 'theme-visitor=00000000-0000-4000-8000-000000000000' },
+      data: { slug: 'minecraft-retro', liked: true, githubId: '900000001' },
+    });
+    assert.equal(rejected.status(), 401);
+    const signIn = page.getByRole('button', { name: 'Sign in with GitHub to like themes' });
+    await signIn.waitFor();
+    await page.route('https://github.com/login/oauth/authorize?**', route => route.fulfill({ body: 'GitHub OAuth screen' }));
+    const authorization = page.waitForRequest(request => request.url().startsWith('https://github.com/login/oauth/authorize?'));
+    await signIn.click();
+    const authorizeURL = new URL((await authorization).url());
+    assert.equal(authorizeURL.searchParams.get('redirect_uri'), new URL('/api/auth/callback/github', site).href);
+    assert.equal(authorizeURL.searchParams.get('scope'), 'read:user');
+    assert.equal(authorizeURL.searchParams.get('code_challenge_method'), 'S256');
+    assert.ok(authorizeURL.searchParams.get('state'));
+    await page.waitForURL(authorizeURL.href);
+    await signInAsTestUser(page);
     await page.goto(site);
     assert.equal(await page.getByRole('heading', { name: 'Margin Notes' }).count(), 0);
     const retro = page.getByRole('article', { name: 'Minecraft Retro', exact: true });
@@ -47,13 +80,20 @@ async function main() {
     await retro.getByRole('button', { name: 'Like Minecraft Retro', pressed: true }).waitFor();
     const otherVisitor = await browser.newPage();
     await otherVisitor.goto(site);
-    const otherLike = otherVisitor.getByRole('button', { name: 'Like Minecraft Retro', pressed: false });
+    const otherLike = otherVisitor.getByRole('button', { name: 'Sign in with GitHub to like Minecraft Retro', exact: true });
     await retro.locator('button[aria-label="Like Minecraft Retro"]:enabled[aria-pressed="true"]').waitFor();
-    await otherVisitor.locator('button[aria-label="Like Minecraft Retro"]:enabled').waitFor();
+    await otherLike.waitFor();
     assert.equal((await otherLike.textContent()).trim(), String(Number(startingLikes) + 1));
+    await signInAsTestUser(otherVisitor);
+    await otherVisitor.reload();
+    await otherVisitor.getByRole('button', { name: 'Like Minecraft Retro', pressed: true }).waitFor();
     await otherVisitor.close();
+    const savedUnlike = page.waitForResponse(response => response.request().method() === 'POST' && response.url() === statsURL.href);
     await like.click();
+    assert.ok((await savedUnlike).ok());
     await retro.getByRole('button', { name: 'Like Minecraft Retro', pressed: false }).waitFor();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await signIn.waitFor();
     await page.getByRole('searchbox', { name: 'Search themes' }).fill('minecraft');
     assert.equal(await page.getByRole('article').count(), 2);
     await page.getByLabel('Filter by tag').selectOption('Voxel');

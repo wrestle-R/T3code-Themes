@@ -86,9 +86,10 @@ button { cursor: pointer; }
 .theme-engagement :is(button, a):hover { color: var(--ink); }
 .theme-engagement button[aria-pressed="true"] { color: light-dark(#9b305b, #ffa7c8); }
 .download-count { padding: 2px 5px; background: var(--code); border-radius: 4px; }
-.gallery-controls, .gallery-filters, .gallery-search { display: flex; align-items: center; gap: 10px; }
+.gallery-controls, .gallery-filters, .gallery-search, .gallery-account { display: flex; align-items: center; gap: 10px; }
 .gallery-controls { justify-content: space-between; flex-wrap: wrap; margin-bottom: 15px; }
-.gallery-filters { flex-wrap: wrap; }
+.gallery-filters, .gallery-account { flex-wrap: wrap; }
+.gallery-session { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); padding: 6px 10px; min-height: 42px; font-size: 13px; }
 .gallery-order, .gallery-error { color: var(--muted); font-size: 13px; }
 .gallery-error { margin-bottom: 12px; }
 .gallery-search, .gallery-filters select, .submit-form input, .submit-form textarea {

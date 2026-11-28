@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { ArrowUpRight, Download, Heart, Search } from 'lucide-react';
+import { signIn, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { GalleryPreview } from './theme-preview';
 
 export function ThemeGallery({ catalog }) {
   const [stats, setStats] = useState(null);
+  const [likesAuth, setLikesAuth] = useState(null);
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('');
   const [busy, setBusy] = useState(false);
@@ -20,6 +22,7 @@ export function ThemeGallery({ catalog }) {
   async function refresh() {
     const response = await fetch('/api/theme-stats', { cache: 'no-store' });
     if (!response.ok) throw new Error('Counts are temporarily unavailable.');
+    setLikesAuth(response.headers.get('X-Theme-Likes-Auth'));
     setStats(await response.json());
   }
 
@@ -27,7 +30,20 @@ export function ThemeGallery({ catalog }) {
     refresh().catch(() => setError('Likes and download counts are temporarily unavailable.'));
   }, []);
 
+  async function changeSession() {
+    setBusy(true);
+    setError('');
+    try {
+      if (likesAuth === 'signed-in') await signOut({ callbackUrl: '/' });
+      else await signIn('github', { callbackUrl: '/' });
+    } catch {
+      setError('Could not connect to sign-in. Try again.');
+      setBusy(false);
+    }
+  }
+
   async function like(slug) {
+    if (likesAuth === 'sign-in') return changeSession();
     const previous = stats[slug];
     const liked = !previous.liked;
     setBusy(true);
@@ -39,6 +55,12 @@ export function ThemeGallery({ catalog }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug, liked }),
       });
+      if (response.status === 401) {
+        setLikesAuth('sign-in');
+        setStats(Object.fromEntries(Object.entries(stats).map(([key, counts]) => [key, { ...counts, liked: false }])));
+        setError('Your session expired. Sign in with GitHub to like themes.');
+        return;
+      }
       if (!response.ok) throw new Error();
       setStats(await response.json());
     } catch {
@@ -89,7 +111,14 @@ export function ThemeGallery({ catalog }) {
             {tags.map(value => <option key={value}>{value}</option>)}
           </select>
         </div>
-        <p className="gallery-order">Most liked first</p>
+        <div className="gallery-account">
+          <p className="gallery-order">Most liked first</p>
+          {(likesAuth === 'sign-in' || likesAuth === 'signed-in') && (
+            <button className="gallery-session" type="button" disabled={busy} onClick={changeSession}>
+              {likesAuth === 'signed-in' ? 'Sign out' : 'Sign in with GitHub to like themes'}
+            </button>
+          )}
+        </div>
       </div>
       {error && <p role="status" className="gallery-error">{error}</p>}
       {!visible.length && <p className="gallery-error">No themes match. Try another search or tag.</p>}
@@ -113,8 +142,9 @@ export function ThemeGallery({ catalog }) {
                 </div>
               </div>
               <div className="theme-engagement">
-                <button type="button" aria-pressed={Boolean(counts?.liked)} aria-label={'Like ' + theme.name}
-                  disabled={!counts} aria-disabled={busy || undefined} onClick={() => { if (!busy) like(slug); }}>
+                <button type="button" aria-pressed={likesAuth === 'signed-in' ? Boolean(counts?.liked) : undefined}
+                  aria-label={(likesAuth === 'sign-in' ? 'Sign in with GitHub to like ' : 'Like ') + theme.name}
+                  disabled={!counts || likesAuth === 'unavailable'} aria-disabled={busy || undefined} onClick={() => { if (!busy) like(slug); }}>
                   <Heart size={16} fill={counts?.liked ? 'currentColor' : 'none'} aria-hidden="true" /> {counts?.likes ?? '–'}
                 </button>
                 <a href={'/api/theme-download/' + slug} download onClick={event => download(event, slug)}

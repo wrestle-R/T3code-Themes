@@ -40,6 +40,7 @@ From `next/`, run `npm ci`, `npx playwright install chromium`, and `npm run buil
 
 - For a submission, run `CONTRIBUTION_SLUG=plum-workspace npm run test:contribution`. It checks the public gallery and studio downloads in Chromium.
 - For app changes, run `npm run test:community`, `npm run test:browser`, and `npm run test:minecraft`.
+- For the local community test, set `NEXTAUTH_URL=http://localhost:3000` and set `NEXTAUTH_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` to test-only values. Use the same environment for the server and the test runner. The test intercepts the GitHub redirect and uses a signed test session.
 - Fork PRs use the **Theme submission** GitHub Actions job. It checks one added JSON package and runs the production download test with the base branch’s app. Maintainer branches run **App and theme behavior**.
 
 ## Deployment

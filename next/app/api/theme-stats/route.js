@@ -1,28 +1,20 @@
-import { randomUUID } from 'node:crypto';
-import { cookies } from 'next/headers';
 import { getCatalog } from '../../lib/catalog';
+import { githubLikeIdentity, githubSignInAvailable } from '../../lib/github-auth';
 import { countThemeDownload, readThemeStats, setThemeLike } from '../../lib/theme-stats';
 
-const cookieName = 'theme-visitor';
 const unavailable = () => Response.json({ error: 'Theme statistics are temporarily unavailable.' }, { status: 503 });
-
-async function visitorId() {
-  const jar = await cookies();
-  const existing = jar.get(cookieName)?.value;
-  if (existing && /^[0-9a-f-]{36}$/.test(existing)) return existing;
-  const visitor = randomUUID();
-  jar.set(cookieName, visitor, { httpOnly: true, secure: Boolean(process.env.VERCEL), sameSite: 'lax', path: '/', maxAge: 31_536_000 });
-  return visitor;
-}
 
 async function statistics(visitor) {
   const slugs = (await getCatalog()).map(theme => theme.slug);
-  return Response.json(await readThemeStats(slugs, visitor), { headers: { 'Cache-Control': 'private, no-store' } });
+  return Response.json(await readThemeStats(slugs, visitor), { headers: {
+    'Cache-Control': 'private, no-store',
+    'X-Theme-Likes-Auth': visitor ? 'signed-in' : githubSignInAvailable ? 'sign-in' : 'unavailable',
+  } });
 }
 
 export async function GET() {
   try {
-    return await statistics(await visitorId());
+    return await statistics(await githubLikeIdentity());
   } catch {
     return unavailable();
   }
@@ -34,8 +26,9 @@ export async function POST(request) {
   if (typeof liked !== 'boolean' && download !== true) return new Response(null, { status: 400 });
   if (!(await getCatalog()).some(theme => theme.slug === slug)) return new Response(null, { status: 404 });
   try {
-    const visitor = await visitorId();
     if (typeof liked === 'boolean') {
+      const visitor = await githubLikeIdentity();
+      if (!visitor) return new Response(null, { status: 401 });
       await setThemeLike(slug, visitor, liked);
       return await statistics(visitor);
     }
