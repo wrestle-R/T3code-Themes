@@ -1,0 +1,27 @@
+{
+  "author": {
+    "name": "Russel Daniel Paul",
+    "github": "wrestle-R",
+    "githubId": "179145430"
+  },
+  "description": "Temporary end-to-end test of the live submission workflow. Please do not merge.",
+  "tags": [
+    "Animated",
+    "Test"
+  ],
+  "theme": {
+    "version": 1,
+    "id": "submission-flow-test-mx0ccm2f",
+    "name": "Submission flow smoke test (do not merge)",
+    "appearance": "dark",
+    "canvas": "#211f2a",
+    "accent": "#ad9af0",
+    "variants": {
+      "light": {
+        "canvas": "#f5f0ff",
+        "accent": "#6544a0"
+      }
+    },
+    "css": "@keyframes t3-submission-pulse { 50% { opacity: .85; } } .preview-composer { animation: t3-submission-pulse 3s ease-in-out infinite; }"
+  }
+}
